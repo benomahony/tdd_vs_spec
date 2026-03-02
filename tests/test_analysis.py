@@ -10,6 +10,7 @@ from tdd_vs_spec.analysis import (
     pass_rates,
     per_repo_breakdown,
     print_summary,
+    significance_test,
 )
 
 
@@ -52,3 +53,33 @@ def test_load_results_reads_json_files(tmp_path):
     db = load_results(tmp_path)
     rows = db.execute("SELECT COUNT(*) FROM results").fetchone()
     assert rows[0] == 2, "must load 2 rows from json"
+
+
+def _make_db(rows: list[tuple]) -> duckdb.DuckDBPyConnection:
+    db = duckdb.connect()
+    db.execute("CREATE TABLE results (instance_id VARCHAR, prefix VARCHAR, resolved BOOLEAN)")
+    db.executemany("INSERT INTO results VALUES (?, ?, ?)", rows)
+    return db
+
+
+def test_significance_test_returns_valid_p_value(fake_db):
+    result = significance_test(fake_db, "tests_only", "tests_plus_human_spec")
+    assert 0.0 <= result.p_value <= 1.0, "p-value must be in [0, 1]"
+    assert result.total_a == 2, "tests_only has 2 rows in fake_db"
+    assert result.total_b == 2, "tests_plus_human_spec has 2 rows in fake_db"
+
+
+def test_significance_test_identical_rates_gives_p_one():
+    rows = [(f"id_{i}", "a", i % 2 == 0) for i in range(10)]
+    rows += [(f"id_{i+100}", "b", i % 2 == 0) for i in range(10)]
+    db = _make_db(rows)
+    result = significance_test(db, "a", "b")
+    assert result.p_value == 1.0, "identical distributions must give p=1.0"
+
+
+def test_significance_test_perfect_separation_gives_low_p():
+    rows = [(f"a_{i}", "a", True) for i in range(20)]
+    rows += [(f"b_{i}", "b", False) for i in range(20)]
+    db = _make_db(rows)
+    result = significance_test(db, "a", "b")
+    assert result.p_value < 0.001, "perfect separation must give very low p-value"
