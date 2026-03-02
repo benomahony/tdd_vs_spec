@@ -83,3 +83,9 @@ def test_significance_test_perfect_separation_gives_low_p():
     db = _make_db(rows)
     result = significance_test(db, "a", "b")
     assert result.p_value < 0.001, "perfect separation must give very low p-value"
+
+
+def test_significance_test_raises_on_missing_condition(fake_db):
+    import pytest
+    with pytest.raises(ValueError, match="not found in results"):
+        significance_test(fake_db, "tests_only", "nonexistent_condition")

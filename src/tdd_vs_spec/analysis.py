@@ -38,6 +38,10 @@ def significance_test(
     """, {"a": cond_a, "b": cond_b}).fetchall()
 
     by_cond = {row[0]: (int(row[1]), int(row[2])) for row in rows}
+    if cond_a not in by_cond:
+        raise ValueError(f"{cond_a} not found in results")
+    if cond_b not in by_cond:
+        raise ValueError(f"{cond_b} not found in results")
     passed_a, total_a = by_cond[cond_a]
     passed_b, total_b = by_cond[cond_b]
     failed_a = total_a - passed_a
@@ -168,7 +172,7 @@ def _print_significance(db: duckdb.DuckDBPyConnection, rates: dict[str, float]) 
             result = significance_test(db, Condition.TESTS_ONLY, condition)
             sig = "✓ significant" if result.p_value < 0.05 else "✗ not significant"
             console.print(f"  {condition}: p={result.p_value:.4f}  {sig}")
-        except (KeyError, duckdb.Error):
+        except (ValueError, duckdb.Error):
             pass
 
 
