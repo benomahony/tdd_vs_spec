@@ -1,11 +1,14 @@
+import asyncio
+import json
+import logging
 from collections.abc import Callable, Iterable
 from pathlib import Path
 from typing import Any, NamedTuple, cast
-import json
-import asyncio
 
 from pydantic import BaseModel
 from pydantic_ai import Agent
+
+logger = logging.getLogger(__name__)
 
 
 SPEC_SYSTEM = """You are a senior software engineer writing an issue description.
@@ -86,8 +89,10 @@ def _read_done_ids(output_path: Path) -> set[str]:
                 if line.strip():
                     try:
                         done.add(json.loads(line)["instance_id"])
-                    except (json.JSONDecodeError, KeyError):
-                        pass
+                    except (json.JSONDecodeError, KeyError) as exc:
+                        logger.warning(
+                            "Skipping corrupted line in %s: %s", output_path, exc
+                        )
     return done
 
 
@@ -126,8 +131,14 @@ async def generate_all_specs(
                         "input_tokens": sr.input_tokens,
                         "output_tokens": sr.output_tokens,
                     }
-                except Exception:
+                except Exception as exc:
                     if attempt == max_retries - 1:
+                        logger.warning(
+                            "Giving up on %s after %d attempts: %s",
+                            row["instance_id"],
+                            max_retries,
+                            exc,
+                        )
                         return None
             return None
 

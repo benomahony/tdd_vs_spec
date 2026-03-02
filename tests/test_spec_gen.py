@@ -1,5 +1,6 @@
 import asyncio
 import json
+import logging
 
 import pytest
 from pydantic_ai import Agent
@@ -8,6 +9,7 @@ from pydantic_ai.models.test import TestModel
 from tdd_vs_spec.spec_gen import (
     GeneratedSpec,
     SpecResult,
+    _read_done_ids,
     generate_all_specs,
     generate_spec,
 )
@@ -96,6 +98,30 @@ def test_generate_all_specs_rejects_zero_concurrency(tmp_path):
         asyncio.run(
             generate_all_specs(tmp_path / "out.jsonl", _dataset=[], concurrency=0)
         )
+
+
+async def test_generate_all_specs_warns_on_permanent_failure(tmp_path, caplog):
+    async def always_fails(test_patch: str) -> SpecResult:
+        raise RuntimeError("permanent failure")
+
+    out = tmp_path / "specs.jsonl"
+    rows = [{"instance_id": "org__repo__0", "test_patch": "patch_0"}]
+    with caplog.at_level(logging.WARNING, logger="tdd_vs_spec.spec_gen"):
+        await generate_all_specs(
+            out, _generate=always_fails, _dataset=rows, max_retries=2
+        )
+    assert any("org__repo__0" in r.message for r in caplog.records), (
+        "must log warning with instance_id when all retries exhausted"
+    )
+
+
+def test_read_done_ids_warns_on_corrupted_line(tmp_path, caplog):
+    path = tmp_path / "specs.jsonl"
+    path.write_text('{"instance_id": "good"}\n{"bad":\n')
+    with caplog.at_level(logging.WARNING, logger="tdd_vs_spec.spec_gen"):
+        done = _read_done_ids(path)
+    assert "good" in done, "valid line must still be parsed"
+    assert any(caplog.records), "must log at least one warning for corrupted line"
 
 
 async def test_generate_all_specs_gives_up_after_max_retries(tmp_path):
