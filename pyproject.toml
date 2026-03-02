@@ -23,6 +23,10 @@ tdd_vs_spec = "tdd_vs_spec.cli:app"
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
+markers = [
+    "unit: fast tests with no external I/O",
+    "integration: slow tests that call real APIs or spawn processes",
+]
 
 [tool.basedpyright]
 reportMissingTypeStubs = "none"
