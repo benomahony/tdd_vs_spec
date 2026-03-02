@@ -3,9 +3,9 @@ from pathlib import Path
 from typing import NamedTuple
 
 import duckdb
-from rich.console import Console
 from rich.table import Table
 
+from ._console import console
 from .conditions import Condition
 
 
@@ -60,9 +60,6 @@ def significance_test(
         passed_b=passed_b,
         total_b=total_b,
     )
-
-console = Console()
-
 
 def load_results(results_dir: Path) -> duckdb.DuckDBPyConnection:
     assert results_dir is not None, "results_dir must not be None"

@@ -5,12 +5,10 @@ import tempfile
 from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
-from rich.console import Console
 from rich.progress import Progress, SpinnerColumn, TextColumn, BarColumn, TaskProgressColumn
 
+from ._console import console
 from .conditions import Condition, Instance, read_instances
-
-console = Console()
 
 
 def run_condition(

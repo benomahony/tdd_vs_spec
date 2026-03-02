@@ -2,8 +2,8 @@ import asyncio
 from pathlib import Path
 
 import typer
-from rich.console import Console
 
+from ._console import console
 from .conditions import (
     Condition,
     load_instances,
@@ -19,7 +19,6 @@ from .runner import (
 from .analysis import cost_analysis, per_repo_breakdown, print_summary, load_results
 
 app = typer.Typer(help="Is the spec additive? TDD vs spec-driven for coding agents.")
-console = Console()
 
 DATA_DIR = Path("data")
 RESULTS_DIR = Path("results")
