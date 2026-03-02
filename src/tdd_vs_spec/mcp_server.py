@@ -26,7 +26,8 @@ async def list_resources() -> list[Resource]:
     assert app is not None, "Server must be initialized"
 
     docs_dir = Path(__file__).parent.parent.parent / "docs"
-    assert docs_dir.exists(), "Docs directory must exist"
+    if not docs_dir.exists():
+        return []
 
     resources = []
     for doc_file in docs_dir.rglob("*.md"):
@@ -41,6 +42,7 @@ async def list_resources() -> list[Resource]:
             )
         )
 
+    assert isinstance(resources, list), "resources must be a list"
     return resources
 
 
