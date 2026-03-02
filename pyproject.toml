@@ -24,8 +24,16 @@ tdd_vs_spec = "tdd_vs_spec.cli:app"
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 
+[tool.basedpyright]
+reportMissingTypeStubs = "none"
+reportAny = "none"
+reportExplicitAny = "none"
+reportUnknownMemberType = "none"
+reportUnknownVariableType = "none"
+reportUnusedCallResult = "none"
+
 [tool.bandit]
-skips = ["B101", "B404", "B603", "B607"]
+skips = ["B101", "B404", "B603", "B607", "B615"]
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/tdd_vs_spec"]

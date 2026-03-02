@@ -18,6 +18,8 @@ class SignificanceResult(NamedTuple):
 
 
 def _hypergeometric_p(a: int, b: int, c: int, d: int) -> float:
+    assert a >= 0 and b >= 0, "counts a and b must be non-negative"
+    assert c >= 0 and d >= 0, "counts c and d must be non-negative"
     n = a + b + c + d
     return comb(a + b, a) * comb(c + d, c) / comb(n, a + c)
 
@@ -28,14 +30,17 @@ def significance_test(
     assert db is not None, "db must not be None"
     assert cond_a != cond_b, "conditions must be distinct"
 
-    rows = db.execute("""
+    rows = db.execute(
+        """
         SELECT prefix,
                SUM(CASE WHEN resolved THEN 1 ELSE 0 END) AS passed,
                COUNT(*) AS total
         FROM results
         WHERE prefix IN ($a, $b)
         GROUP BY prefix
-    """, {"a": cond_a, "b": cond_b}).fetchall()
+    """,
+        {"a": cond_a, "b": cond_b},
+    ).fetchall()
 
     by_cond = {row[0]: (int(row[1]), int(row[2])) for row in rows}
     if cond_a not in by_cond:
@@ -51,9 +56,13 @@ def significance_test(
     total_passed = passed_a + passed_b
 
     p_value = sum(
-        _hypergeometric_p(k, total_a - k, total_passed - k, total_b - (total_passed - k))
+        _hypergeometric_p(
+            k, total_a - k, total_passed - k, total_b - (total_passed - k)
+        )
         for k in range(max(0, total_passed - total_b), min(total_a, total_passed) + 1)
-        if _hypergeometric_p(k, total_a - k, total_passed - k, total_b - (total_passed - k))
+        if _hypergeometric_p(
+            k, total_a - k, total_passed - k, total_b - (total_passed - k)
+        )
         <= p_observed + 1e-10
     )
 
@@ -65,6 +74,7 @@ def significance_test(
         total_b=total_b,
     )
 
+
 def load_results(results_dir: Path) -> duckdb.DuckDBPyConnection:
     assert results_dir is not None, "results_dir must not be None"
     assert results_dir.is_dir(), f"results_dir does not exist: {results_dir}"
@@ -74,10 +84,13 @@ def load_results(results_dir: Path) -> duckdb.DuckDBPyConnection:
         raise FileNotFoundError(f"No result JSON files found in {results_dir}")
 
     db = duckdb.connect()
-    db.execute("""
+    db.execute(
+        """
         CREATE TABLE results AS
         SELECT * FROM read_json_auto($files, union_by_name=true)
-    """, {"files": [str(f) for f in result_files]})
+    """,
+        {"files": [str(f) for f in result_files]},
+    )
 
     return db
 
@@ -153,9 +166,7 @@ def _print_delta(rates: dict[str, float]) -> None:
             continue
         delta = rate - baseline
         colour = "green" if delta > 0 else "red"
-        console.print(
-            f"  {condition}: [{colour}]{delta:+.1f}pp[/{colour}]"
-        )
+        console.print(f"  {condition}: [{colour}]{delta:+.1f}pp[/{colour}]")
 
 
 def _print_significance(db: duckdb.DuckDBPyConnection, rates: dict[str, float]) -> None:
