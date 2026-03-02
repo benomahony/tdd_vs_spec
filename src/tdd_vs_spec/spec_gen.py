@@ -147,9 +147,9 @@ async def generate_all_specs(
     with output_path.open("a") as f:
         if output_path.stat().st_size > 0:
             with output_path.open("rb") as rb:
-                rb.seek(-1, 2)
+                _ = rb.seek(-1, 2)
                 if rb.read(1) != b"\n":
-                    f.write("\n")
+                    _ = f.write("\n")
         for item in results:
             if item is not None:
-                f.write(json.dumps(item) + "\n")
+                _ = f.write(json.dumps(item) + "\n")

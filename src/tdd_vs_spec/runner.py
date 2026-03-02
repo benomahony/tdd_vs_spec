@@ -115,7 +115,7 @@ def _run_single(
             console.print(
                 f"[red]Failed {instance.instance_id}[/red]: {result.stderr[-500:]}"
             )
-            pred_file.write_text(
+            _ = pred_file.write_text(
                 json.dumps(
                     {
                         "instance_id": instance.instance_id,
@@ -148,4 +148,4 @@ def write_patches_json(patches: list[dict[str, Any]], path: Path) -> None:
     assert patches is not None, "patches must not be None"
     assert path is not None, "path must not be None"
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(patches, indent=2))
+    _ = path.write_text(json.dumps(patches, indent=2))

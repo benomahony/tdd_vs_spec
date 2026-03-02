@@ -84,7 +84,7 @@ def load_results(results_dir: Path) -> duckdb.DuckDBPyConnection:
         raise FileNotFoundError(f"No result JSON files found in {results_dir}")
 
     db = duckdb.connect()
-    db.execute(
+    _ = db.execute(
         """
         CREATE TABLE results AS
         SELECT * FROM read_json_auto($files, union_by_name=true)

@@ -33,7 +33,7 @@ reportAny = "none"
 reportExplicitAny = "none"
 reportUnknownMemberType = "none"
 reportUnknownVariableType = "none"
-reportUnusedCallResult = "none"
+reportCallInDefaultInitializer = "none"
 
 [tool.bandit]
 skips = ["B101"]

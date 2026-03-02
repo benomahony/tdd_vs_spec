@@ -6,6 +6,7 @@ import typer
 from ._console import console
 from .conditions import (
     Condition,
+    Instance,
     load_instances,
     load_llm_specs,
     write_instances,
@@ -59,11 +60,10 @@ def prepare(
     specs = load_llm_specs(llm_specs) if llm_specs.exists() else None
     if specs is None:
         console.print(
-            "[yellow]No LLM specs found — skipping TESTS_PLUS_LLM_SPEC. "
-            "Run generate-specs first.[/yellow]"
+            "[yellow]No LLM specs found — skipping TESTS_PLUS_LLM_SPEC. Run generate-specs first.[/yellow]"
         )
 
-    all_instances = []
+    all_instances: list[Instance] = []
     for condition in Condition:
         if condition == Condition.TESTS_PLUS_LLM_SPEC and specs is None:
             continue
@@ -134,7 +134,7 @@ def evaluate(
     for condition in conditions:
         patches_path = preds_dir / f"{condition}_patches.json"
         cond_output = output_dir / condition
-        console.print(
+        cmd = (
             f"python {eval_script} \\\n"
             f"  --raw_sample_path={dataset_csv} \\\n"
             f"  --patch_path={patches_path} \\\n"
@@ -143,6 +143,7 @@ def evaluate(
             f"  --num_workers={num_workers} \\\n"
             f"  --dockerhub_username={dockerhub_username}\n"
         )
+        console.print(cmd)
 
 
 @app.command()

@@ -88,7 +88,7 @@ def write_instances(instances: list[Instance], path: Path) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("w") as f:
         for instance in instances:
-            f.write(instance.model_dump_json() + "\n")
+            _ = f.write(instance.model_dump_json() + "\n")
 
 
 def read_instances(path: Path) -> list[Instance]:
