@@ -1,0 +1,37 @@
+name: CI and Publish
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+
+      - name: Set up Python
+        run: uv python install 3.12
+
+      - name: Install dependencies
+        run: uv sync --all-extras --frozen
+
+      - name: Lint with ruff
+        run: uv run ruff check .
+
+      - name: Format check with ruff
+        run: uv run ruff format --check .
+
+      - name: Type check with basedpyright
+        run: uv run basedpyright
+
+      - name: Run unit tests (parallel)
+        run: uv run pytest -m unit -n auto --cov=src/tdd_vs_spec --cov-report=term-missing
+
+      - name: Run integration tests (sequential)
+        run: uv run pytest -m integration --cov=src/tdd_vs_spec --cov-append --cov-report=term-missing
