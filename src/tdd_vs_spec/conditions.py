@@ -38,6 +38,7 @@ def load_instances(
     dataset: Iterable[dict] | None = None,
 ) -> list[Instance]:
     assert condition is not None, "condition must not be None"
+    assert isinstance(condition, Condition), "condition must be a Condition enum member"
     if dataset is None:
         from datasets import load_dataset
         dataset = load_dataset("ScaleAI/SWE-bench_Pro", split="test")

@@ -34,6 +34,8 @@ def generate_specs(
     concurrency: int = typer.Option(10, help="Concurrent API calls"),
 ) -> None:
     """Generate LLM specs from test patches using pydantic-ai."""
+    assert output is not None, "output path must not be None"
+    assert concurrency > 0, "concurrency must be positive"
     console.print(f"Generating LLM specs -> {output}")
     asyncio.run(generate_all_specs(output, limit=limit, concurrency=concurrency))
     console.print(f"[green]Done[/green] — {output}")
@@ -50,6 +52,8 @@ def prepare(
     limit: int | None = typer.Option(None, help="Limit number of instances"),
 ) -> None:
     """Prepare all three condition instances and write to JSONL."""
+    assert output is not None, "output path must not be None"
+    assert llm_specs is not None, "llm_specs path must not be None"
     specs = load_llm_specs(llm_specs) if llm_specs.exists() else None
     if specs is None:
         console.print(
@@ -86,6 +90,8 @@ def run(
     max_workers: int = typer.Option(4, help="Parallel workers"),
 ) -> None:
     """Run the agent on all instances for each condition."""
+    assert max_workers > 0, "max_workers must be positive"
+    assert instances is not None, "instances path must not be None"
     for condition in conditions:
         pred_dir = run_condition(
             instances,
@@ -148,6 +154,8 @@ def analyse(
     costs: bool = typer.Option(False, help="Show cost analysis"),
 ) -> None:
     """Analyse evaluation results and print pass rate comparison."""
+    assert results_dir is not None, "results_dir must not be None"
+    assert isinstance(breakdown, bool), "breakdown must be a bool"
     db = load_results(results_dir)
     print_summary(db)
     if breakdown:

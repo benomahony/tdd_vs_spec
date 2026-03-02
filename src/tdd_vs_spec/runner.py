@@ -77,6 +77,8 @@ def _run_single(
     model: str,
     timeout: int,
 ) -> None:
+    assert instance is not None, "instance must not be None"
+    assert timeout > 0, "timeout must be positive"
     with tempfile.NamedTemporaryFile(
         mode="w", suffix=".json", delete=False
     ) as f:
