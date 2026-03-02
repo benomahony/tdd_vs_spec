@@ -2749,17 +2749,11 @@ source = { editable = "." }
 dependencies = [
     { name = "datasets" },
     { name = "duckdb" },
-    { name = "httpx" },
+    { name = "mcp" },
     { name = "pydantic" },
     { name = "pydantic-ai" },
     { name = "rich" },
     { name = "typer" },
-]
-
-[package.optional-dependencies]
-dev = [
-    { name = "pytest" },
-    { name = "pytest-asyncio" },
 ]
 
 [package.dev-dependencies]
@@ -2772,15 +2766,12 @@ dev = [
 requires-dist = [
     { name = "datasets", specifier = ">=2.20" },
     { name = "duckdb", specifier = ">=1.0" },
-    { name = "httpx", specifier = ">=0.27" },
+    { name = "mcp", specifier = ">=1.0" },
     { name = "pydantic", specifier = ">=2.7" },
     { name = "pydantic-ai", specifier = ">=0.0.14" },
-    { name = "pytest", marker = "extra == 'dev'", specifier = ">=8" },
-    { name = "pytest-asyncio", marker = "extra == 'dev'", specifier = ">=0.24" },
     { name = "rich", specifier = ">=13" },
     { name = "typer", specifier = ">=0.12" },
 ]
-provides-extras = ["dev"]
 
 [package.metadata.requires-dev]
 dev = [

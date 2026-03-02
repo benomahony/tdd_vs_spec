@@ -14,40 +14,18 @@ dependencies = [
     "pydantic>=2.7",
     "rich>=13",
     "duckdb>=1.0",
-    "httpx>=0.27",
+    "mcp>=1.0",
 ]
 
 [project.scripts]
 tdd-vs-spec = "tdd_vs_spec.cli:app"
 tdd_vs_spec = "tdd_vs_spec.cli:app"
 
-[project.optional-dependencies]
-dev = [
-    "pytest>=8",
-    "pytest-asyncio>=0.24",
-]
-
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 
-[tool.basedpyright]
-reportAny = "none"
-reportUnusedCallResult = "none"
-reportCallInDefaultInitializer = "none"
-reportImplicitStringConcatenation = "none"
-reportUnknownMemberType = "none"
-reportUnknownArgumentType = "none"
-reportExplicitAny = "none"
-reportMissingTypeStubs = "none"
-reportUnknownVariableType = "none"
-reportUnknownParameterType = "none"
-reportMissingParameterType = "none"
-
 [tool.bandit]
-skips = ["B101", "B404", "B603", "B615"]
-
-[tool.deptry]
-ignore = ["DEP002", "DEP003"]
+skips = ["B101", "B404", "B603", "B607"]
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/tdd_vs_spec"]
