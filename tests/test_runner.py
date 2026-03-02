@@ -19,6 +19,7 @@ def _fake_instance() -> Instance:
     )
 
 
+@pytest.mark.unit
 def test_gather_patches_reads_pred_files(tmp_path):
     pred_dir = tmp_path / "preds" / "tests_only"
     pred_dir.mkdir(parents=True)
@@ -35,6 +36,7 @@ def test_gather_patches_reads_pred_files(tmp_path):
     assert ids == {"inst_0", "inst_1"}, "instance_ids must match filenames"
 
 
+@pytest.mark.unit
 def test_write_patches_json_round_trips(tmp_path):
     patches = [{"instance_id": "a", "patch": "x", "prefix": "tests_only"}]
     out = tmp_path / "patches.json"
@@ -43,6 +45,7 @@ def test_write_patches_json_round_trips(tmp_path):
     assert loaded == patches, "round-trip must preserve patches"
 
 
+@pytest.mark.unit
 def test_gather_patches_handles_missing_instance_id(tmp_path):
     pred_dir = tmp_path / "preds"
     pred_dir.mkdir()
@@ -53,6 +56,7 @@ def test_gather_patches_handles_missing_instance_id(tmp_path):
     )
 
 
+@pytest.mark.unit
 def test_run_single_missing_dir_raises(tmp_path):
     with pytest.raises(AssertionError, match="mini_swe_agent_dir"):
         _run_single(
@@ -64,6 +68,7 @@ def test_run_single_missing_dir_raises(tmp_path):
         )
 
 
+@pytest.mark.unit
 def test_run_single_writes_error_pred_on_failure(tmp_path):
     agent_dir = tmp_path / "agent"
     agent_dir.mkdir()
@@ -76,10 +81,12 @@ def test_run_single_writes_error_pred_on_failure(tmp_path):
     assert "error" in data, "error pred must contain error field"
 
 
+@pytest.mark.unit
 def test_run_single_uses_sys_executable(tmp_path):
     """runner._run_single must invoke sys.executable, not bare 'python'."""
-    from tdd_vs_spec import runner as runner_module
     import inspect
+
+    from tdd_vs_spec import runner as runner_module
 
     src = inspect.getsource(runner_module)
     assert "sys.executable" in src, (

@@ -14,6 +14,7 @@ def _dataset(n: int = 5) -> list[dict]:
     return [fake_row(i) for i in range(n)]
 
 
+@pytest.mark.unit
 def test_load_instances_tests_only_uses_fixed_prompt(tmp_path):
     instances = load_instances(Condition.TESTS_ONLY, dataset=_dataset(3))
     assert len(instances) == 3, "must load all rows"
@@ -23,6 +24,7 @@ def test_load_instances_tests_only_uses_fixed_prompt(tmp_path):
         )
 
 
+@pytest.mark.unit
 def test_load_instances_human_spec_uses_problem_statement(tmp_path):
     instances = load_instances(Condition.TESTS_PLUS_HUMAN_SPEC, dataset=_dataset(3))
     assert len(instances) == 3
@@ -32,6 +34,7 @@ def test_load_instances_human_spec_uses_problem_statement(tmp_path):
         )
 
 
+@pytest.mark.unit
 def test_load_instances_llm_spec_skips_missing(tmp_path):
     specs = {"org__repo__0": "spec for 0", "org__repo__2": "spec for 2"}
     instances = load_instances(
@@ -41,18 +44,19 @@ def test_load_instances_llm_spec_skips_missing(tmp_path):
     assert instances[0].problem_statement == "spec for 0"
 
 
+@pytest.mark.unit
 def test_load_instances_llm_spec_raises_without_specs():
-    import pytest
-
     with pytest.raises(ValueError, match="llm_specs required"):
         load_instances(Condition.TESTS_PLUS_LLM_SPEC, dataset=_dataset(2))
 
 
+@pytest.mark.unit
 def test_load_instances_respects_limit():
     instances = load_instances(Condition.TESTS_ONLY, limit=2, dataset=_dataset(5))
     assert len(instances) == 2, "limit must be respected"
 
 
+@pytest.mark.unit
 def test_load_llm_specs_reads_jsonl(tmp_path):
     path = tmp_path / "specs.jsonl"
     path.write_text(
@@ -65,11 +69,13 @@ def test_load_llm_specs_reads_jsonl(tmp_path):
     assert specs["a__b__1"] == "fix the other thing"
 
 
+@pytest.mark.unit
 def test_load_llm_specs_raises_on_missing_file(tmp_path):
     with pytest.raises(AssertionError, match="specs file not found"):
         load_llm_specs(tmp_path / "nonexistent.jsonl")
 
 
+@pytest.mark.unit
 def test_load_llm_specs_skips_blank_lines(tmp_path):
     path = tmp_path / "specs.jsonl"
     path.write_text('{"instance_id": "a", "spec": "s"}\n\n\n')
@@ -77,6 +83,7 @@ def test_load_llm_specs_skips_blank_lines(tmp_path):
     assert len(specs) == 1, "blank lines must be skipped"
 
 
+@pytest.mark.unit
 def test_write_read_roundtrip(tmp_path):
     original = [fake_instance(i) for i in range(5)]
     path = tmp_path / "instances.jsonl"

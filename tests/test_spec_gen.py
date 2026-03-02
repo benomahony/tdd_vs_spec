@@ -27,6 +27,7 @@ async def _fast_generate(test_patch: str) -> SpecResult:
     return SpecResult(spec=f"spec: {test_patch}", input_tokens=5, output_tokens=3)
 
 
+@pytest.mark.unit
 async def test_generate_all_specs_writes_all_rows(tmp_path):
     out = tmp_path / "specs.jsonl"
     await generate_all_specs(out, _generate=_fast_generate, _dataset=_fake_rows(10))
@@ -40,6 +41,7 @@ async def test_generate_all_specs_writes_all_rows(tmp_path):
     )
 
 
+@pytest.mark.unit
 async def test_generate_all_specs_resumes_without_duplicates(tmp_path):
     out = tmp_path / "specs.jsonl"
     rows = _fake_rows(10)
@@ -58,6 +60,7 @@ async def test_generate_all_specs_resumes_without_duplicates(tmp_path):
     assert len(lines) == 10, "must have all 10 rows after resume"
 
 
+@pytest.mark.unit
 async def test_generate_all_specs_concurrent_output_valid(tmp_path):
     out = tmp_path / "specs.jsonl"
     await generate_all_specs(
@@ -68,16 +71,19 @@ async def test_generate_all_specs_concurrent_output_valid(tmp_path):
     assert all(json.dumps(ln) for ln in lines), "all lines must be valid JSON"
 
 
+@pytest.mark.unit
 async def test_generate_spec_raises_on_none_patch():
     with pytest.raises(AssertionError, match="must not be None"):
         await generate_spec(None)  # type: ignore[arg-type]
 
 
+@pytest.mark.unit
 async def test_generate_spec_raises_on_empty_patch():
     with pytest.raises(AssertionError, match="must not be empty"):
         await generate_spec("")
 
 
+@pytest.mark.unit
 async def test_generate_spec_with_test_model():
     agent = Agent(
         TestModel(custom_output_args={"spec": "the code must do X"}),
@@ -93,6 +99,7 @@ async def test_generate_spec_with_test_model():
     )
 
 
+@pytest.mark.unit
 def test_generate_all_specs_rejects_zero_concurrency(tmp_path):
     with pytest.raises(AssertionError, match="concurrency must be positive"):
         asyncio.run(
@@ -100,6 +107,7 @@ def test_generate_all_specs_rejects_zero_concurrency(tmp_path):
         )
 
 
+@pytest.mark.unit
 async def test_generate_all_specs_warns_on_permanent_failure(tmp_path, caplog):
     async def always_fails(test_patch: str) -> SpecResult:
         raise RuntimeError("permanent failure")
@@ -115,6 +123,7 @@ async def test_generate_all_specs_warns_on_permanent_failure(tmp_path, caplog):
     )
 
 
+@pytest.mark.unit
 def test_read_done_ids_warns_on_corrupted_line(tmp_path, caplog):
     path = tmp_path / "specs.jsonl"
     path.write_text('{"instance_id": "good"}\n{"bad":\n')
@@ -124,6 +133,7 @@ def test_read_done_ids_warns_on_corrupted_line(tmp_path, caplog):
     assert any(caplog.records), "must log at least one warning for corrupted line"
 
 
+@pytest.mark.unit
 async def test_generate_all_specs_gives_up_after_max_retries(tmp_path):
     async def always_fails(test_patch: str) -> SpecResult:
         raise RuntimeError("permanent failure")
@@ -136,6 +146,7 @@ async def test_generate_all_specs_gives_up_after_max_retries(tmp_path):
     )
 
 
+@pytest.mark.unit
 async def test_generate_all_specs_retries_transient_failure(tmp_path):
     call_counts: dict[str, int] = {}
 
@@ -154,6 +165,7 @@ async def test_generate_all_specs_retries_transient_failure(tmp_path):
     assert call_counts["patch_0"] == 2, "must have retried once"
 
 
+@pytest.mark.unit
 async def test_generate_all_specs_handles_corrupted_resume_file(tmp_path):
     out = tmp_path / "specs.jsonl"
     out.write_text('{"instance_id": "org__repo__0", "spec": "ok"}\n{"partial":')

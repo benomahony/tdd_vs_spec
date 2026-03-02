@@ -1,6 +1,9 @@
 """Tests for public API surface and shared console singleton."""
 
+import pytest
 
+
+@pytest.mark.unit
 def test_condition_importable_from_package():
     from tdd_vs_spec import Condition
 
@@ -8,6 +11,7 @@ def test_condition_importable_from_package():
     assert len(list(Condition)) == 3
 
 
+@pytest.mark.unit
 def test_instance_importable_from_package():
     from tdd_vs_spec import Instance, Condition
 
@@ -25,6 +29,7 @@ def test_instance_importable_from_package():
     assert isinstance(inst, Instance)
 
 
+@pytest.mark.unit
 def test_all_modules_share_same_console():
     from tdd_vs_spec import analysis, runner, cli
 
