@@ -1,7 +1,12 @@
-import json
 import pytest
 
-from tdd_vs_spec.conditions import Condition, Instance, load_instances, load_llm_specs, read_instances, write_instances
+from tdd_vs_spec.conditions import (
+    Condition,
+    load_instances,
+    load_llm_specs,
+    read_instances,
+    write_instances,
+)
 from tests.conftest import fake_row, fake_instance
 
 
@@ -13,25 +18,32 @@ def test_load_instances_tests_only_uses_fixed_prompt(tmp_path):
     instances = load_instances(Condition.TESTS_ONLY, dataset=_dataset(3))
     assert len(instances) == 3, "must load all rows"
     for inst in instances:
-        assert "failing tests" in inst.problem_statement, "TESTS_ONLY must use the fixed prompt"
+        assert "failing tests" in inst.problem_statement, (
+            "TESTS_ONLY must use the fixed prompt"
+        )
 
 
 def test_load_instances_human_spec_uses_problem_statement(tmp_path):
     instances = load_instances(Condition.TESTS_PLUS_HUMAN_SPEC, dataset=_dataset(3))
     assert len(instances) == 3
     for i, inst in enumerate(instances):
-        assert inst.problem_statement == f"Fix issue {i}", "human spec must use the row's problem_statement"
+        assert inst.problem_statement == f"Fix issue {i}", (
+            "human spec must use the row's problem_statement"
+        )
 
 
 def test_load_instances_llm_spec_skips_missing(tmp_path):
     specs = {"org__repo__0": "spec for 0", "org__repo__2": "spec for 2"}
-    instances = load_instances(Condition.TESTS_PLUS_LLM_SPEC, llm_specs=specs, dataset=_dataset(3))
+    instances = load_instances(
+        Condition.TESTS_PLUS_LLM_SPEC, llm_specs=specs, dataset=_dataset(3)
+    )
     assert len(instances) == 2, "must skip rows with no LLM spec"
     assert instances[0].problem_statement == "spec for 0"
 
 
 def test_load_instances_llm_spec_raises_without_specs():
     import pytest
+
     with pytest.raises(ValueError, match="llm_specs required"):
         load_instances(Condition.TESTS_PLUS_LLM_SPEC, dataset=_dataset(2))
 

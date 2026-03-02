@@ -1,5 +1,4 @@
 import json
-from pathlib import Path
 
 import duckdb
 import pytest
@@ -9,7 +8,6 @@ from tdd_vs_spec.analysis import (
     load_results,
     pass_rates,
     per_repo_breakdown,
-    print_summary,
     significance_test,
 )
 
@@ -28,13 +26,17 @@ def test_print_summary_consistent_with_pass_rates(fake_db):
 
 
 def test_per_repo_breakdown_handles_no_double_underscore(fake_db):
-    fake_db.execute("INSERT INTO results VALUES ('nounderscore', 'tests_only', true, 0.01, 1)")
+    fake_db.execute(
+        "INSERT INTO results VALUES ('nounderscore', 'tests_only', true, 0.01, 1)"
+    )
     per_repo_breakdown(fake_db)
 
 
 def test_cost_analysis_handles_missing_columns(capsys):
     db = duckdb.connect()
-    db.execute("CREATE TABLE results (instance_id VARCHAR, prefix VARCHAR, resolved BOOLEAN)")
+    db.execute(
+        "CREATE TABLE results (instance_id VARCHAR, prefix VARCHAR, resolved BOOLEAN)"
+    )
     db.execute("INSERT INTO results VALUES ('a__b__0', 'tests_only', true)")
     cost_analysis(db)
 
@@ -57,7 +59,9 @@ def test_load_results_reads_json_files(tmp_path):
 
 def _make_db(rows: list[tuple]) -> duckdb.DuckDBPyConnection:
     db = duckdb.connect()
-    db.execute("CREATE TABLE results (instance_id VARCHAR, prefix VARCHAR, resolved BOOLEAN)")
+    db.execute(
+        "CREATE TABLE results (instance_id VARCHAR, prefix VARCHAR, resolved BOOLEAN)"
+    )
     db.executemany("INSERT INTO results VALUES (?, ?, ?)", rows)
     return db
 
@@ -71,7 +75,7 @@ def test_significance_test_returns_valid_p_value(fake_db):
 
 def test_significance_test_identical_rates_gives_p_one():
     rows = [(f"id_{i}", "a", i % 2 == 0) for i in range(10)]
-    rows += [(f"id_{i+100}", "b", i % 2 == 0) for i in range(10)]
+    rows += [(f"id_{i + 100}", "b", i % 2 == 0) for i in range(10)]
     db = _make_db(rows)
     result = significance_test(db, "a", "b")
     assert result.p_value == 1.0, "identical distributions must give p=1.0"
@@ -87,5 +91,6 @@ def test_significance_test_perfect_separation_gives_low_p():
 
 def test_significance_test_raises_on_missing_condition(fake_db):
     import pytest
+
     with pytest.raises(ValueError, match="not found in results"):
         significance_test(fake_db, "tests_only", "nonexistent_condition")
