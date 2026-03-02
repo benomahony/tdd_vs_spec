@@ -1,5 +1,6 @@
 from collections.abc import Callable, Iterable
 from pathlib import Path
+from typing import NamedTuple
 import json
 import asyncio
 
@@ -23,6 +24,12 @@ class GeneratedSpec(BaseModel):
     spec: str
 
 
+class SpecResult(NamedTuple):
+    spec: str
+    input_tokens: int
+    output_tokens: int
+
+
 def _default_agent() -> Agent[None, GeneratedSpec]:
     return Agent(
         "anthropic:claude-sonnet-4-6",
@@ -34,14 +41,19 @@ def _default_agent() -> Agent[None, GeneratedSpec]:
 async def generate_spec(
     test_patch: str,
     agent: Agent[None, GeneratedSpec] | None = None,
-) -> str:
+) -> SpecResult:
     assert test_patch is not None, "test_patch must not be None"
     assert len(test_patch) > 0, "test_patch must not be empty"
     if agent is None:
         agent = _default_agent()
     prompt = f"Generate a spec for the following failing tests:\n\n{test_patch}"
     result = await agent.run(prompt)
-    return result.output.spec
+    usage = result.usage()
+    return SpecResult(
+        spec=result.output.spec,
+        input_tokens=usage.input_tokens or 0,
+        output_tokens=usage.output_tokens or 0,
+    )
 
 
 async def generate_all_specs(
@@ -68,7 +80,7 @@ async def generate_all_specs(
             rows = rows[:limit]
 
     if _generate is None:
-        async def _generate(test_patch: str) -> str:  # type: ignore[misc]
+        async def _generate(test_patch: str) -> SpecResult:  # type: ignore[misc]
             return await generate_spec(test_patch)
 
     already_done: set[str] = set()
@@ -76,7 +88,10 @@ async def generate_all_specs(
         with output_path.open() as f:
             for line in f:
                 if line.strip():
-                    already_done.add(json.loads(line)["instance_id"])
+                    try:
+                        already_done.add(json.loads(line)["instance_id"])
+                    except (json.JSONDecodeError, KeyError):
+                        pass
 
     pending = [row for row in rows if row["instance_id"] not in already_done]
 
@@ -87,8 +102,15 @@ async def generate_all_specs(
         async with semaphore:
             for attempt in range(max_retries):
                 try:
-                    spec = await _generate(row["test_patch"])
-                    return {"instance_id": row["instance_id"], "spec": spec}
+                    result = await _generate(row["test_patch"])
+                    item: dict = {"instance_id": row["instance_id"]}
+                    if isinstance(result, SpecResult):
+                        item["spec"] = result.spec
+                        item["input_tokens"] = result.input_tokens
+                        item["output_tokens"] = result.output_tokens
+                    else:
+                        item["spec"] = result
+                    return item
                 except Exception:
                     if attempt == max_retries - 1:
                         return None
@@ -97,6 +119,11 @@ async def generate_all_specs(
     results = await asyncio.gather(*[process(row) for row in pending])
 
     with output_path.open("a") as f:
+        if output_path.stat().st_size > 0:
+            with output_path.open("rb") as rb:
+                rb.seek(-1, 2)
+                if rb.read(1) != b"\n":
+                    f.write("\n")
         for item in results:
             if item is not None:
                 f.write(json.dumps(item) + "\n")
