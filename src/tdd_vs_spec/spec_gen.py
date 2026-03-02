@@ -48,6 +48,7 @@ async def generate_all_specs(
     output_path: Path,
     limit: int | None = None,
     concurrency: int = 10,
+    max_retries: int = 3,
     *,
     _generate: Callable[[str], asyncio.Future[str]] | None = None,
     _dataset: Iterable[dict] | None = None,
@@ -82,13 +83,20 @@ async def generate_all_specs(
     semaphore = asyncio.Semaphore(concurrency)
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
-    async def process(row: dict) -> dict:
+    async def process(row: dict) -> dict | None:
         async with semaphore:
-            spec = await _generate(row["test_patch"])
-            return {"instance_id": row["instance_id"], "spec": spec}
+            for attempt in range(max_retries):
+                try:
+                    spec = await _generate(row["test_patch"])
+                    return {"instance_id": row["instance_id"], "spec": spec}
+                except Exception:
+                    if attempt == max_retries - 1:
+                        return None
+            return None
 
     results = await asyncio.gather(*[process(row) for row in pending])
 
     with output_path.open("a") as f:
         for item in results:
-            f.write(json.dumps(item) + "\n")
+            if item is not None:
+                f.write(json.dumps(item) + "\n")
