@@ -2957,7 +2957,6 @@ source = { editable = "." }
 dependencies = [
     { name = "datasets" },
     { name = "duckdb" },
-    { name = "mcp" },
     { name = "pydantic" },
     { name = "pydantic-ai" },
     { name = "rich" },
@@ -2982,7 +2981,6 @@ dev = [
 requires-dist = [
     { name = "datasets", specifier = ">=2.20" },
     { name = "duckdb", specifier = ">=1.0" },
-    { name = "mcp", specifier = ">=1.0" },
     { name = "pydantic", specifier = ">=2.7" },
     { name = "pydantic-ai", specifier = ">=0.0.14" },
     { name = "rich", specifier = ">=13" },
