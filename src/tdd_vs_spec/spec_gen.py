@@ -1,0 +1,94 @@
+from collections.abc import Callable, Iterable
+from pathlib import Path
+import json
+import asyncio
+
+from pydantic import BaseModel
+from pydantic_ai import Agent
+
+
+SPEC_SYSTEM = """You are a senior software engineer writing an issue description.
+
+Given a set of failing tests, write a concise natural language specification that
+describes what behaviour the code should implement — without revealing the
+implementation. The spec should read like a GitHub issue: clear, actionable,
+and focused on observable behaviour.
+
+Do not reference test function names, test file paths, or any implementation details.
+Do not say 'make the tests pass'. Describe the desired behaviour as a user or
+developer would experience it."""
+
+
+class GeneratedSpec(BaseModel):
+    spec: str
+
+
+def _default_agent() -> Agent[None, GeneratedSpec]:
+    return Agent(
+        "anthropic:claude-sonnet-4-6",
+        output_type=GeneratedSpec,
+        instructions=SPEC_SYSTEM,
+    )
+
+
+async def generate_spec(
+    test_patch: str,
+    agent: Agent[None, GeneratedSpec] | None = None,
+) -> str:
+    assert test_patch is not None, "test_patch must not be None"
+    assert len(test_patch) > 0, "test_patch must not be empty"
+    if agent is None:
+        agent = _default_agent()
+    prompt = f"Generate a spec for the following failing tests:\n\n{test_patch}"
+    result = await agent.run(prompt)
+    return result.output.spec
+
+
+async def generate_all_specs(
+    output_path: Path,
+    limit: int | None = None,
+    concurrency: int = 10,
+    *,
+    _generate: Callable[[str], asyncio.Future[str]] | None = None,
+    _dataset: Iterable[dict] | None = None,
+) -> None:
+    assert output_path is not None, "output_path must not be None"
+    assert concurrency > 0, "concurrency must be positive"
+
+    if _dataset is None:
+        from datasets import load_dataset
+        dataset = load_dataset("ScaleAI/SWE-bench_Pro", split="test")
+        if limit:
+            dataset = dataset.select(range(limit))
+        rows: list[dict] = list(dataset)
+    else:
+        rows = list(_dataset)
+        if limit:
+            rows = rows[:limit]
+
+    if _generate is None:
+        async def _generate(test_patch: str) -> str:  # type: ignore[misc]
+            return await generate_spec(test_patch)
+
+    already_done: set[str] = set()
+    if output_path.exists():
+        with output_path.open() as f:
+            for line in f:
+                if line.strip():
+                    already_done.add(json.loads(line)["instance_id"])
+
+    pending = [row for row in rows if row["instance_id"] not in already_done]
+
+    semaphore = asyncio.Semaphore(concurrency)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+
+    async def process(row: dict) -> dict:
+        async with semaphore:
+            spec = await _generate(row["test_patch"])
+            return {"instance_id": row["instance_id"], "spec": spec}
+
+    results = await asyncio.gather(*[process(row) for row in pending])
+
+    with output_path.open("a") as f:
+        for item in results:
+            f.write(json.dumps(item) + "\n")
