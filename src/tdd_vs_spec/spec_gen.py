@@ -33,9 +33,13 @@ class SpecResult(NamedTuple):
     output_tokens: int
 
 
-def _default_agent() -> Agent[None, GeneratedSpec]:
+def _default_agent(
+    model: str = "anthropic:claude-sonnet-4-6",
+) -> Agent[None, GeneratedSpec]:
+    assert model is not None, "model must not be None"
+    assert len(model) > 0, "model must not be empty"
     agent = Agent(
-        "anthropic:claude-sonnet-4-6",
+        model,
         output_type=GeneratedSpec,
         instructions=SPEC_SYSTEM,
     )
@@ -47,11 +51,12 @@ def _default_agent() -> Agent[None, GeneratedSpec]:
 async def generate_spec(
     test_patch: str,
     agent: Agent[None, GeneratedSpec] | None = None,
+    model: str = "anthropic:claude-sonnet-4-6",
 ) -> SpecResult:
     assert test_patch is not None, "test_patch must not be None"
     assert len(test_patch) > 0, "test_patch must not be empty"
     if agent is None:
-        agent = _default_agent()
+        agent = _default_agent(model)
     prompt = f"Generate a spec for the following failing tests:\n\n{test_patch}"
     result = await agent.run(prompt)
     usage = result.usage()
@@ -96,13 +101,28 @@ def _read_done_ids(output_path: Path) -> set[str]:
     return done
 
 
+def _append_results(output_path: Path, results: list[dict[str, Any] | None]) -> None:
+    assert output_path is not None, "output_path must not be None"
+    assert results is not None, "results must not be None"
+    with output_path.open("a") as f:
+        if output_path.stat().st_size > 0:
+            with output_path.open("rb") as rb:
+                _ = rb.seek(-1, 2)
+                if rb.read(1) != b"\n":
+                    _ = f.write("\n")
+        for item in results:
+            if item is not None:
+                _ = f.write(json.dumps(item) + "\n")
+
+
 async def generate_all_specs(
     output_path: Path,
     limit: int | None = None,
     concurrency: int = 10,
     max_retries: int = 3,
+    model: str = "anthropic:claude-sonnet-4-6",
     *,
-    _generate: Callable[..., Any] = generate_spec,
+    _generate: Callable[..., Any] | None = None,
     _dataset: Iterable[dict[str, Any]] | None = None,
 ) -> None:
     assert output_path is not None, "output_path must not be None"
@@ -119,7 +139,10 @@ async def generate_all_specs(
         async with semaphore:
             for attempt in range(max_retries):
                 try:
-                    result = await _generate(row["test_patch"])
+                    if _generate is not None:
+                        result = await _generate(row["test_patch"])
+                    else:
+                        result = await generate_spec(row["test_patch"], model=model)
                     sr = (
                         result
                         if isinstance(result, SpecResult)
@@ -143,13 +166,4 @@ async def generate_all_specs(
             return None
 
     results = await asyncio.gather(*[process(row) for row in pending])
-
-    with output_path.open("a") as f:
-        if output_path.stat().st_size > 0:
-            with output_path.open("rb") as rb:
-                _ = rb.seek(-1, 2)
-                if rb.read(1) != b"\n":
-                    _ = f.write("\n")
-        for item in results:
-            if item is not None:
-                _ = f.write(json.dumps(item) + "\n")
+    _append_results(output_path, list(results))

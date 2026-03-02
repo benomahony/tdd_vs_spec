@@ -14,6 +14,15 @@ def test_evaluate_no_hardcoded_username(tmp_path):
 
 
 @pytest.mark.unit
+def test_generate_specs_cli_accepts_model_option():
+    result = runner.invoke(app, ["generate-specs", "--help"])
+    assert result.exit_code == 0, result.output
+    assert "--model" in result.output, (
+        "--model option must appear in generate-specs help"
+    )
+
+
+@pytest.mark.unit
 def test_evaluate_accepts_custom_username(tmp_path):
     result = runner.invoke(
         app, ["evaluate", str(tmp_path), "--dockerhub-username", "myuser"]

@@ -35,12 +35,17 @@ def generate_specs(
     ),
     limit: int | None = typer.Option(None, help="Limit number of instances"),
     concurrency: int = typer.Option(10, help="Concurrent API calls"),
+    model: str = typer.Option(
+        "anthropic:claude-sonnet-4-6", help="Model to use for spec generation"
+    ),
 ) -> None:
     """Generate LLM specs from test patches using pydantic-ai."""
     assert output is not None, "output path must not be None"
     assert concurrency > 0, "concurrency must be positive"
     console.print(f"Generating LLM specs -> {output}")
-    asyncio.run(generate_all_specs(output, limit=limit, concurrency=concurrency))
+    asyncio.run(
+        generate_all_specs(output, limit=limit, concurrency=concurrency, model=model)
+    )
     console.print(f"[green]Done[/green] — {output}")
 
 

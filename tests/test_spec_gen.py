@@ -166,6 +166,33 @@ async def test_generate_all_specs_retries_transient_failure(tmp_path):
 
 
 @pytest.mark.unit
+async def test_generate_all_specs_accepts_model_param(tmp_path):
+    out = tmp_path / "specs.jsonl"
+    await generate_all_specs(
+        out,
+        model="anthropic:claude-opus-4-6",
+        _generate=_fast_generate,
+        _dataset=_fake_rows(2),
+    )
+    lines = [json.loads(ln) for ln in out.read_text().strip().splitlines()]
+    assert len(lines) == 2, "must write 2 rows when model param is passed"
+
+
+@pytest.mark.unit
+async def test_generate_spec_accepts_model_kwarg(tmp_path):
+    agent = Agent(
+        TestModel(custom_output_args={"spec": "the code must do X"}),
+        output_type=GeneratedSpec,
+    )
+    result = await generate_spec(
+        "def test_foo(): pass", agent=agent, model="anthropic:claude-opus-4-6"
+    )
+    assert isinstance(result, SpecResult), (
+        "must return SpecResult when model kwarg passed"
+    )
+
+
+@pytest.mark.unit
 async def test_generate_all_specs_handles_corrupted_resume_file(tmp_path):
     out = tmp_path / "specs.jsonl"
     out.write_text('{"instance_id": "org__repo__0", "spec": "ok"}\n{"partial":')
