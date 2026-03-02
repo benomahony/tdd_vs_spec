@@ -1,6 +1,6 @@
 from collections.abc import Callable, Iterable
 from pathlib import Path
-from typing import NamedTuple
+from typing import Any, NamedTuple, cast
 import json
 import asyncio
 
@@ -31,11 +31,14 @@ class SpecResult(NamedTuple):
 
 
 def _default_agent() -> Agent[None, GeneratedSpec]:
-    return Agent(
+    agent = Agent(
         "anthropic:claude-sonnet-4-6",
         output_type=GeneratedSpec,
         instructions=SPEC_SYSTEM,
     )
+    assert agent is not None, "agent must not be None"
+    assert agent.output_type is not None, "agent must have output_type"
+    return agent
 
 
 async def generate_spec(
@@ -56,61 +59,73 @@ async def generate_spec(
     )
 
 
+def _load_dataset_rows(
+    dataset: Iterable[dict[str, Any]] | None, limit: int | None
+) -> list[dict[str, Any]]:
+    assert limit is None or limit > 0, "limit must be positive"
+    if dataset is None:
+        from datasets import load_dataset
+
+        ds = load_dataset("ScaleAI/SWE-bench_Pro", split="test")
+        rows = cast(
+            list[dict[str, Any]], list(ds.select(range(limit)) if limit else ds)
+        )
+    else:
+        rows = list(dataset)
+    assert isinstance(rows, list), "rows must be a list"
+    return rows[:limit] if limit else rows
+
+
+def _read_done_ids(output_path: Path) -> set[str]:
+    assert output_path is not None, "output_path must not be None"
+    assert isinstance(output_path, Path), "output_path must be a Path"
+    done: set[str] = set()
+    if output_path.exists():
+        with output_path.open() as f:
+            for line in f:
+                if line.strip():
+                    try:
+                        done.add(json.loads(line)["instance_id"])
+                    except (json.JSONDecodeError, KeyError):
+                        pass
+    return done
+
+
 async def generate_all_specs(
     output_path: Path,
     limit: int | None = None,
     concurrency: int = 10,
     max_retries: int = 3,
     *,
-    _generate: Callable[[str], asyncio.Future[str]] | None = None,
-    _dataset: Iterable[dict] | None = None,
+    _generate: Callable[..., Any] = generate_spec,
+    _dataset: Iterable[dict[str, Any]] | None = None,
 ) -> None:
     assert output_path is not None, "output_path must not be None"
     assert concurrency > 0, "concurrency must be positive"
 
-    if _dataset is None:
-        from datasets import load_dataset
-        dataset = load_dataset("ScaleAI/SWE-bench_Pro", split="test")
-        if limit:
-            dataset = dataset.select(range(limit))
-        rows: list[dict] = list(dataset)
-    else:
-        rows = list(_dataset)
-        if limit:
-            rows = rows[:limit]
-
-    if _generate is None:
-        async def _generate(test_patch: str) -> SpecResult:  # type: ignore[misc]
-            return await generate_spec(test_patch)
-
-    already_done: set[str] = set()
-    if output_path.exists():
-        with output_path.open() as f:
-            for line in f:
-                if line.strip():
-                    try:
-                        already_done.add(json.loads(line)["instance_id"])
-                    except (json.JSONDecodeError, KeyError):
-                        pass
-
-    pending = [row for row in rows if row["instance_id"] not in already_done]
-
+    rows = _load_dataset_rows(_dataset, limit)
+    pending = [r for r in rows if r["instance_id"] not in _read_done_ids(output_path)]
     semaphore = asyncio.Semaphore(concurrency)
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
-    async def process(row: dict) -> dict | None:
+    async def process(row: dict[str, Any]) -> dict[str, Any] | None:
+        assert row is not None, "row must not be None"
+        assert "test_patch" in row, "row must contain test_patch"
         async with semaphore:
             for attempt in range(max_retries):
                 try:
                     result = await _generate(row["test_patch"])
-                    item: dict = {"instance_id": row["instance_id"]}
-                    if isinstance(result, SpecResult):
-                        item["spec"] = result.spec
-                        item["input_tokens"] = result.input_tokens
-                        item["output_tokens"] = result.output_tokens
-                    else:
-                        item["spec"] = result
-                    return item
+                    sr = (
+                        result
+                        if isinstance(result, SpecResult)
+                        else SpecResult(result, 0, 0)
+                    )
+                    return {
+                        "instance_id": row["instance_id"],
+                        "spec": sr.spec,
+                        "input_tokens": sr.input_tokens,
+                        "output_tokens": sr.output_tokens,
+                    }
                 except Exception:
                     if attempt == max_retries - 1:
                         return None
