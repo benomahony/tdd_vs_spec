@@ -33,6 +33,7 @@ packages = ["src/tdd_vs_spec"]
 [dependency-groups]
 dev = [
     "bandit>=1.9.4",
+    "cliqa>=0.1.5",
     "pytest>=9.0.2",
     "pytest-asyncio>=1.3.0",
 ]
