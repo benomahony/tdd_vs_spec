@@ -18,7 +18,10 @@ from .runner import (
 )
 from .analysis import cost_analysis, per_repo_breakdown, print_summary, load_results
 
-app = typer.Typer(help="Is the spec additive? TDD vs spec-driven for coding agents.")
+app = typer.Typer(
+    help="Is the spec additive? TDD vs spec-driven for coding agents.",
+    context_settings={"help_option_names": ["-h", "--help"]},
+)
 
 DATA_DIR = Path("data")
 RESULTS_DIR = Path("results")
@@ -74,10 +77,10 @@ def prepare(
 
 @app.command()
 def run(
-    instances: Path = typer.Option(
-        DATA_DIR / "instances.jsonl", help="Instances file"
+    instances: Path = typer.Option(DATA_DIR / "instances.jsonl", help="Instances file"),
+    output_dir: Path = typer.Option(
+        RESULTS_DIR / "preds", help="Output dir for .pred files"
     ),
-    output_dir: Path = typer.Option(RESULTS_DIR / "preds", help="Output dir for .pred files"),
     mini_swe_agent: Path = typer.Option(
         Path("SWE-bench_Pro-os/mini-swe-agent"),
         help="Path to mini-swe-agent directory",
@@ -110,9 +113,7 @@ def run(
 
 @app.command()
 def evaluate(
-    swe_bench_pro_dir: Path = typer.Argument(
-        help="Path to SWE-bench_Pro-os checkout"
-    ),
+    swe_bench_pro_dir: Path = typer.Argument(help="Path to SWE-bench_Pro-os checkout"),
     preds_dir: Path = typer.Option(RESULTS_DIR / "preds", help="Predictions dir"),
     output_dir: Path = typer.Option(RESULTS_DIR / "eval", help="Evaluation output"),
     num_workers: int = typer.Option(8, help="Docker workers"),
