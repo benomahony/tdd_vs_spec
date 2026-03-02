@@ -33,6 +33,7 @@ packages = ["src/tdd_vs_spec"]
 [dependency-groups]
 dev = [
     "bandit>=1.9.4",
+    "basedpyright>=1.38.2",
     "cliqa>=0.1.5",
     "deptry>=0.24.0",
     "pytest>=9.0.2",
