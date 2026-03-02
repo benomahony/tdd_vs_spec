@@ -1,4 +1,7 @@
-from tdd_vs_spec.conditions import Condition, Instance, load_instances, read_instances, write_instances
+import json
+import pytest
+
+from tdd_vs_spec.conditions import Condition, Instance, load_instances, load_llm_specs, read_instances, write_instances
 from tests.conftest import fake_row, fake_instance
 
 
@@ -36,6 +39,30 @@ def test_load_instances_llm_spec_raises_without_specs():
 def test_load_instances_respects_limit():
     instances = load_instances(Condition.TESTS_ONLY, limit=2, dataset=_dataset(5))
     assert len(instances) == 2, "limit must be respected"
+
+
+def test_load_llm_specs_reads_jsonl(tmp_path):
+    path = tmp_path / "specs.jsonl"
+    path.write_text(
+        '{"instance_id": "a__b__0", "spec": "do the thing"}\n'
+        '{"instance_id": "a__b__1", "spec": "fix the other thing"}\n'
+    )
+    specs = load_llm_specs(path)
+    assert len(specs) == 2, "must load both specs"
+    assert specs["a__b__0"] == "do the thing"
+    assert specs["a__b__1"] == "fix the other thing"
+
+
+def test_load_llm_specs_raises_on_missing_file(tmp_path):
+    with pytest.raises(AssertionError, match="specs file not found"):
+        load_llm_specs(tmp_path / "nonexistent.jsonl")
+
+
+def test_load_llm_specs_skips_blank_lines(tmp_path):
+    path = tmp_path / "specs.jsonl"
+    path.write_text('{"instance_id": "a", "spec": "s"}\n\n\n')
+    specs = load_llm_specs(path)
+    assert len(specs) == 1, "blank lines must be skipped"
 
 
 def test_write_read_roundtrip(tmp_path):
