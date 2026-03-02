@@ -69,7 +69,7 @@ def _load_dataset_rows(
     if dataset is None:
         from datasets import load_dataset
 
-        ds = load_dataset("ScaleAI/SWE-bench_Pro", split="test")
+        ds = load_dataset("ScaleAI/SWE-bench_Pro", split="test")  # nosec B615
         rows = cast(
             list[dict[str, Any]], list(ds.select(range(limit)) if limit else ds)
         )

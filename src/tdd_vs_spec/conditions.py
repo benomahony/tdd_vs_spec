@@ -43,7 +43,7 @@ def load_instances(
     if dataset is None:
         from datasets import load_dataset
 
-        hf_ds = load_dataset("ScaleAI/SWE-bench_Pro", split="test")
+        hf_ds = load_dataset("ScaleAI/SWE-bench_Pro", split="test")  # nosec B615
         if limit:
             hf_ds = hf_ds.select(range(limit))
         rows = cast(list[dict[str, Any]], list(hf_ds))

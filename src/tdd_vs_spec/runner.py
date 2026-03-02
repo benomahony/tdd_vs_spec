@@ -1,5 +1,5 @@
 import json
-import subprocess
+import subprocess  # nosec B404
 import sys
 import tempfile
 from pathlib import Path
@@ -95,7 +95,7 @@ def _run_single(
         task_file = Path(f.name)
 
     try:
-        result = subprocess.run(
+        result = subprocess.run(  # nosec B603
             [
                 sys.executable,
                 "run.py",
