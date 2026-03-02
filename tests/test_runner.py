@@ -1,8 +1,22 @@
 import json
 
+import pytest
 
-from tdd_vs_spec.conditions import Condition
-from tdd_vs_spec.runner import gather_patches, write_patches_json
+from tdd_vs_spec.conditions import Condition, Instance
+from tdd_vs_spec.runner import _run_single, gather_patches, write_patches_json
+
+
+def _fake_instance() -> Instance:
+    return Instance(
+        instance_id="test__repo__0",
+        condition=Condition.TESTS_ONLY,
+        problem_statement="fix it",
+        test_patch="def test_x(): pass",
+        patch="",
+        dockerhub_tag="tag",
+        repo="test/repo",
+        base_commit="abc123",
+    )
 
 
 def test_gather_patches_reads_pred_files(tmp_path):
@@ -37,6 +51,29 @@ def test_gather_patches_handles_missing_instance_id(tmp_path):
     assert patches[0]["instance_id"] == "fallback", (
         "must fall back to stem when no instance_id"
     )
+
+
+def test_run_single_missing_dir_raises(tmp_path):
+    with pytest.raises(AssertionError, match="mini_swe_agent_dir"):
+        _run_single(
+            _fake_instance(),
+            tmp_path / "out.pred",
+            tmp_path / "nonexistent",
+            "model",
+            30,
+        )
+
+
+def test_run_single_writes_error_pred_on_failure(tmp_path):
+    agent_dir = tmp_path / "agent"
+    agent_dir.mkdir()
+    (agent_dir / "run.py").write_text("import sys; sys.exit(1)\n")
+    pred_file = tmp_path / "out.pred"
+    _run_single(_fake_instance(), pred_file, agent_dir, "model", 30)
+    assert pred_file.exists(), "error pred must be written on failure"
+    data = json.loads(pred_file.read_text())
+    assert data["patch"] == "", "error pred must have empty patch"
+    assert "error" in data, "error pred must contain error field"
 
 
 def test_run_single_uses_sys_executable(tmp_path):

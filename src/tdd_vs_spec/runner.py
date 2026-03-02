@@ -80,6 +80,7 @@ def _run_single(
     timeout: int,
 ) -> None:
     assert instance is not None, "instance must not be None"
+    assert mini_swe_agent_dir.exists(), "mini_swe_agent_dir must exist"
     assert timeout > 0, "timeout must be positive"
     with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
         json.dump(
