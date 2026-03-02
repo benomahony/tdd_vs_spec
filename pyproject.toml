@@ -42,6 +42,7 @@ packages = ["src/tdd_vs_spec"]
 dev = [
     "bandit>=1.9.4",
     "basedpyright>=1.38.2",
+    "bump-my-version>=1.2.7",
     "cliqa>=0.1.5",
     "deptry>=0.24.0",
     "pytest>=9.0.2",
