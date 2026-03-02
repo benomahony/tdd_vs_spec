@@ -37,4 +37,5 @@ dev = [
     "deptry>=0.24.0",
     "pytest>=9.0.2",
     "pytest-asyncio>=1.3.0",
+    "vulture>=2.14",
 ]
