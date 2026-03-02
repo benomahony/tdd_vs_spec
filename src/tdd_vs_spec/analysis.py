@@ -1,10 +1,65 @@
+from math import comb
 from pathlib import Path
+from typing import NamedTuple
 
 import duckdb
 from rich.console import Console
 from rich.table import Table
 
 from .conditions import Condition
+
+
+class SignificanceResult(NamedTuple):
+    p_value: float
+    passed_a: int
+    total_a: int
+    passed_b: int
+    total_b: int
+
+
+def _hypergeometric_p(a: int, b: int, c: int, d: int) -> float:
+    n = a + b + c + d
+    return comb(a + b, a) * comb(c + d, c) / comb(n, a + c)
+
+
+def significance_test(
+    db: duckdb.DuckDBPyConnection, cond_a: str, cond_b: str
+) -> SignificanceResult:
+    assert db is not None, "db must not be None"
+    assert cond_a != cond_b, "conditions must be distinct"
+
+    rows = db.execute("""
+        SELECT prefix,
+               SUM(CASE WHEN resolved THEN 1 ELSE 0 END) AS passed,
+               COUNT(*) AS total
+        FROM results
+        WHERE prefix IN ($a, $b)
+        GROUP BY prefix
+    """, {"a": cond_a, "b": cond_b}).fetchall()
+
+    by_cond = {row[0]: (int(row[1]), int(row[2])) for row in rows}
+    passed_a, total_a = by_cond[cond_a]
+    passed_b, total_b = by_cond[cond_b]
+    failed_a = total_a - passed_a
+    failed_b = total_b - passed_b
+
+    p_observed = _hypergeometric_p(passed_a, failed_a, passed_b, failed_b)
+    total_passed = passed_a + passed_b
+
+    p_value = sum(
+        _hypergeometric_p(k, total_a - k, total_passed - k, total_b - (total_passed - k))
+        for k in range(max(0, total_passed - total_b), min(total_a, total_passed) + 1)
+        if _hypergeometric_p(k, total_a - k, total_passed - k, total_b - (total_passed - k))
+        <= p_observed + 1e-10
+    )
+
+    return SignificanceResult(
+        p_value=min(1.0, p_value),
+        passed_a=passed_a,
+        total_a=total_a,
+        passed_b=passed_b,
+        total_b=total_b,
+    )
 
 console = Console()
 
@@ -49,6 +104,7 @@ def pass_rates(db: duckdb.DuckDBPyConnection) -> dict[str, float]:
 
 def print_summary(db: duckdb.DuckDBPyConnection) -> None:
     assert db is not None, "db must not be None"
+    assert isinstance(db, duckdb.DuckDBPyConnection), "db must be a DuckDBPyConnection"
 
     rates = pass_rates(db)
     rows = db.execute("""
@@ -79,10 +135,12 @@ def print_summary(db: duckdb.DuckDBPyConnection) -> None:
 
     console.print(table)
     _print_delta(rates)
+    _print_significance(db, rates)
 
 
 def _print_delta(rates: dict[str, float]) -> None:
     assert rates is not None, "rates must not be None"
+    assert isinstance(rates, dict), "rates must be a dict"
 
     baseline = rates.get(Condition.TESTS_ONLY)
     if baseline is None:
@@ -99,8 +157,27 @@ def _print_delta(rates: dict[str, float]) -> None:
         )
 
 
+def _print_significance(db: duckdb.DuckDBPyConnection, rates: dict[str, float]) -> None:
+    assert db is not None, "db must not be None"
+    assert rates is not None, "rates must not be None"
+
+    comparisons = [c for c in rates if c != Condition.TESTS_ONLY]
+    if not comparisons:
+        return
+
+    console.print("\n[bold]Fisher's exact test vs tests-only[/bold]")
+    for condition in comparisons:
+        try:
+            result = significance_test(db, Condition.TESTS_ONLY, condition)
+            sig = "✓ significant" if result.p_value < 0.05 else "✗ not significant"
+            console.print(f"  {condition}: p={result.p_value:.4f}  {sig}")
+        except (KeyError, duckdb.Error):
+            pass
+
+
 def per_repo_breakdown(db: duckdb.DuckDBPyConnection) -> None:
     assert db is not None, "db must not be None"
+    assert isinstance(db, duckdb.DuckDBPyConnection), "db must be a DuckDBPyConnection"
 
     rows = db.execute("""
         SELECT
@@ -130,6 +207,7 @@ def per_repo_breakdown(db: duckdb.DuckDBPyConnection) -> None:
 
 def cost_analysis(db: duckdb.DuckDBPyConnection) -> None:
     assert db is not None, "db must not be None"
+    assert isinstance(db, duckdb.DuckDBPyConnection), "db must be a DuckDBPyConnection"
 
     try:
         rows = db.execute("""
