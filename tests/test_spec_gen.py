@@ -57,3 +57,31 @@ def test_generate_all_specs_rejects_zero_concurrency(tmp_path):
         asyncio.run(
             generate_all_specs(tmp_path / "out.jsonl", _dataset=[], concurrency=0)
         )
+
+
+async def test_generate_all_specs_retries_transient_failure(tmp_path):
+    call_counts: dict[str, int] = {}
+
+    async def flaky(test_patch: str) -> str:
+        call_counts[test_patch] = call_counts.get(test_patch, 0) + 1
+        if call_counts[test_patch] == 1:
+            raise RuntimeError("transient network error")
+        return f"spec: {test_patch}"
+
+    out = tmp_path / "specs.jsonl"
+    rows = [{"instance_id": "org__repo__0", "test_patch": "patch_0"}]
+    await generate_all_specs(out, _generate=flaky, _dataset=rows)
+
+    lines = [json.loads(l) for l in out.read_text().strip().splitlines()]
+    assert len(lines) == 1, "must succeed after retry"
+    assert call_counts["patch_0"] == 2, "must have retried once"
+
+
+async def test_generate_all_specs_gives_up_after_max_retries(tmp_path):
+    async def always_fails(test_patch: str) -> str:
+        raise RuntimeError("permanent failure")
+
+    out = tmp_path / "specs.jsonl"
+    rows = [{"instance_id": "org__repo__0", "test_patch": "patch_0"}]
+    await generate_all_specs(out, _generate=always_fails, _dataset=rows, max_retries=2)
+    assert not out.exists() or out.read_text().strip() == "", "nothing written for permanent failure"
