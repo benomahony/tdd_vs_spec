@@ -49,7 +49,6 @@ def load_instances(
         rows = list(dataset)
         if limit:
             rows = rows[:limit]
-    dataset = rows  # type: ignore[assignment]
 
     instances = []
     for row in rows:
