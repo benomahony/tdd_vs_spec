@@ -1,6 +1,7 @@
 import asyncio
 import json
 import logging
+from typing import Any, cast
 
 import pytest
 from pydantic_ai import Agent
@@ -15,7 +16,7 @@ from tdd_vs_spec.spec_gen import (
 )
 
 
-def _fake_rows(n: int = 10) -> list[dict]:
+def _fake_rows(n: int = 10) -> list[dict[str, Any]]:
     return [
         {"instance_id": f"org__repo__{i}", "test_patch": f"def test_{i}(): pass"}
         for i in range(n)
@@ -74,7 +75,7 @@ async def test_generate_all_specs_concurrent_output_valid(tmp_path):
 @pytest.mark.unit
 async def test_generate_spec_raises_on_none_patch():
     with pytest.raises(AssertionError, match="must not be None"):
-        await generate_spec(None)  # type: ignore[arg-type]
+        await generate_spec(cast(str, cast(object, None)))
 
 
 @pytest.mark.unit

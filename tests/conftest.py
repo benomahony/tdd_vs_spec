@@ -4,7 +4,7 @@ import pytest
 from tdd_vs_spec.conditions import Condition, Instance
 
 
-def fake_row(i: int = 0) -> dict:
+def fake_row(i: int = 0) -> dict[str, str]:
     return {
         "instance_id": f"org__repo__{i}",
         "problem_statement": f"Fix issue {i}",

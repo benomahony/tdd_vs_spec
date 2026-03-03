@@ -1,3 +1,5 @@
+from typing import Any
+
 import pytest
 
 from tdd_vs_spec.conditions import (
@@ -10,7 +12,7 @@ from tdd_vs_spec.conditions import (
 from tests.conftest import fake_row, fake_instance
 
 
-def _dataset(n: int = 5) -> list[dict]:
+def _dataset(n: int = 5) -> list[dict[str, Any]]:
     return [fake_row(i) for i in range(n)]
 
 

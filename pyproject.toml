@@ -27,6 +27,12 @@ markers = [
   "integration: slow tests that call real APIs or spawn processes",
 ]
 
+[tool.basedpyright]
+reportMissingTypeStubs = "none"
+reportCallInDefaultInitializer = "none"
+reportUnknownMemberType = "none"
+reportUnknownVariableType = "none"
+
 [tool.bandit]
 skips = ["B101"]
 

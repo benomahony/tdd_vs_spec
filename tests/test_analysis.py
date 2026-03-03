@@ -59,11 +59,11 @@ def test_load_results_reads_json_files(tmp_path):
     ]
     (tmp_path / "results.json").write_text(json.dumps(data))
     db = load_results(tmp_path)
-    rows = db.execute("SELECT COUNT(*) FROM results").fetchone()
-    assert rows[0] == 2, "must load 2 rows from json"
+    row = db.execute("SELECT COUNT(*) FROM results").fetchone()
+    assert row is not None and row[0] == 2, "must load 2 rows from json"
 
 
-def _make_db(rows: list[tuple]) -> duckdb.DuckDBPyConnection:
+def _make_db(rows: list[tuple[str, str, bool]]) -> duckdb.DuckDBPyConnection:
     db = duckdb.connect()
     db.execute(
         "CREATE TABLE results (instance_id VARCHAR, prefix VARCHAR, resolved BOOLEAN)"

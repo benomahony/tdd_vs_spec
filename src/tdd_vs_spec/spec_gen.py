@@ -1,9 +1,9 @@
 import asyncio
 import json
 import logging
-from collections.abc import Callable, Iterable
+from collections.abc import Awaitable, Callable, Iterable
 from pathlib import Path
-from typing import Any, NamedTuple, cast
+from typing import NamedTuple, cast
 
 from pydantic import BaseModel
 from pydantic_ai import Agent
@@ -68,15 +68,15 @@ async def generate_spec(
 
 
 def _load_dataset_rows(
-    dataset: Iterable[dict[str, Any]] | None, limit: int | None
-) -> list[dict[str, Any]]:
+    dataset: Iterable[dict[str, str]] | None, limit: int | None
+) -> list[dict[str, str]]:
     assert limit is None or limit > 0, "limit must be positive"
     if dataset is None:
         from datasets import load_dataset
 
         ds = load_dataset("ScaleAI/SWE-bench_Pro", split="test")  # nosec B615
         rows = cast(
-            list[dict[str, Any]], list(ds.select(range(limit)) if limit else ds)
+            list[dict[str, str]], list(ds.select(range(limit)) if limit else ds)
         )
     else:
         rows = list(dataset)
@@ -93,7 +93,7 @@ def _read_done_ids(output_path: Path) -> set[str]:
             for line in f:
                 if line.strip():
                     try:
-                        done.add(json.loads(line)["instance_id"])
+                        done.add(cast(dict[str, str], json.loads(line))["instance_id"])
                     except (json.JSONDecodeError, KeyError) as exc:
                         logger.warning(
                             "Skipping corrupted line in %s: %s", output_path, exc
@@ -101,7 +101,9 @@ def _read_done_ids(output_path: Path) -> set[str]:
     return done
 
 
-def _append_results(output_path: Path, results: list[dict[str, Any] | None]) -> None:
+def _append_results(
+    output_path: Path, results: list[dict[str, str | int] | None]
+) -> None:
     assert output_path is not None, "output_path must not be None"
     assert results is not None, "results must not be None"
     with output_path.open("a") as f:
@@ -122,8 +124,8 @@ async def generate_all_specs(
     max_retries: int = 3,
     model: str = "anthropic:claude-sonnet-4-6",
     *,
-    _generate: Callable[..., Any] | None = None,
-    _dataset: Iterable[dict[str, Any]] | None = None,
+    _generate: Callable[..., Awaitable[SpecResult]] | None = None,
+    _dataset: Iterable[dict[str, str]] | None = None,
 ) -> None:
     assert output_path is not None, "output_path must not be None"
     assert concurrency > 0, "concurrency must be positive"
@@ -133,7 +135,7 @@ async def generate_all_specs(
     semaphore = asyncio.Semaphore(concurrency)
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
-    async def process(row: dict[str, Any]) -> dict[str, Any] | None:
+    async def process(row: dict[str, str]) -> None:
         assert row is not None, "row must not be None"
         assert "test_patch" in row, "row must contain test_patch"
         async with semaphore:
@@ -143,17 +145,15 @@ async def generate_all_specs(
                         result = await _generate(row["test_patch"])
                     else:
                         result = await generate_spec(row["test_patch"], model=model)
-                    sr = (
-                        result
-                        if isinstance(result, SpecResult)
-                        else SpecResult(result, 0, 0)
-                    )
-                    return {
+                    sr = result
+                    item = {
                         "instance_id": row["instance_id"],
                         "spec": sr.spec,
                         "input_tokens": sr.input_tokens,
                         "output_tokens": sr.output_tokens,
                     }
+                    _append_results(output_path, [item])
+                    return
                 except Exception as exc:
                     if attempt == max_retries - 1:
                         logger.warning(
@@ -162,8 +162,5 @@ async def generate_all_specs(
                             max_retries,
                             exc,
                         )
-                        return None
-            return None
 
-    results = await asyncio.gather(*[process(row) for row in pending])
-    _append_results(output_path, list(results))
+    _ = await asyncio.gather(*[process(row) for row in pending])
