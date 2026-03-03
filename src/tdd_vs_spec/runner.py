@@ -101,11 +101,13 @@ def run_condition(
     model: str = "claude-sonnet-4-6",
     max_workers: int = 4,
     timeout: int = 3600,
+    limit: int | None = None,
 ) -> Path:
     assert max_workers > 0, "max_workers must be positive"
     assert instances_path.exists(), f"instances file not found: {instances_path}"
     assert mini_swe_agent_dir.exists(), "mini_swe_agent_dir must exist"
     instances = [i for i in read_instances(instances_path) if i.condition == condition]
+    instances = instances[:limit]
     pred_dir = output_dir / condition
     pred_dir.mkdir(parents=True, exist_ok=True)
 
@@ -140,7 +142,6 @@ def run_condition(
             mini_swe_agent_dir,
             timeout,
         )
-
     if result is None:
         console.print(f"[yellow]Timeout for {condition}[/yellow]")
         return pred_dir
@@ -149,7 +150,6 @@ def run_condition(
         console.print(
             f"[red]run-batch failed for {condition}[/red]: {result.stderr[-500:]}"
         )
-
     _merge_preds(preds_file, existing_preds)
     return pred_dir
 

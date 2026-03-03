@@ -95,6 +95,7 @@ def run(
         list(Condition), help="Conditions to run"
     ),
     max_workers: int = typer.Option(4, help="Parallel workers"),
+    limit: int | None = typer.Option(None, help="Limit instances per condition"),
 ) -> None:
     """Run the agent on all instances for each condition."""
     assert max_workers > 0, "max_workers must be positive"
@@ -107,6 +108,7 @@ def run(
             mini_swe_agent_dir=mini_swe_agent,
             model=model,
             max_workers=max_workers,
+            limit=limit,
         )
         patches = gather_patches(pred_dir, condition)
         patches_path = output_dir / f"{condition}_patches.json"
