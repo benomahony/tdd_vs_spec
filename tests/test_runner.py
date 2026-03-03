@@ -74,6 +74,23 @@ def test_gather_patches_uses_model_patch_field(tmp_path):
 
 
 @pytest.mark.unit
+def test_gather_patches_returns_empty_when_no_preds_file(tmp_path):
+    pred_dir = tmp_path / "tests_only"
+    pred_dir.mkdir()
+    patches = gather_patches(pred_dir, Condition.TESTS_ONLY)
+    assert patches == [], "must return empty list when preds.json is missing"
+
+
+@pytest.mark.unit
+def test_gather_patches_returns_empty_on_corrupt_preds_json(tmp_path):
+    pred_dir = tmp_path / "tests_only"
+    pred_dir.mkdir()
+    (pred_dir / "preds.json").write_text("{not valid json")
+    patches = gather_patches(pred_dir, Condition.TESTS_ONLY)
+    assert patches == [], "must return empty list on corrupt preds.json"
+
+
+@pytest.mark.unit
 def test_write_patches_json_round_trips(tmp_path):
     patches = [{"instance_id": "a", "patch": "x", "prefix": "tests_only"}]
     out = tmp_path / "patches.json"
