@@ -40,20 +40,37 @@ def test_write_instances_json_includes_required_fields(tmp_path):
 
 
 @pytest.mark.unit
-def test_gather_patches_reads_pred_files(tmp_path):
-    pred_dir = tmp_path / "preds" / "tests_only"
-    pred_dir.mkdir(parents=True)
-    (pred_dir / "inst_0.pred").write_text(
-        json.dumps({"instance_id": "inst_0", "patch": "diff --git a/f.py"})
-    )
-    (pred_dir / "inst_1.pred").write_text(
-        json.dumps({"instance_id": "inst_1", "patch": ""})
-    )
+def test_gather_patches_reads_preds_json(tmp_path):
+    pred_dir = tmp_path / "tests_only"
+    pred_dir.mkdir()
+    preds = {
+        "inst_0": {"model_patch": "diff --git a/f.py", "model_name_or_path": "claude"},
+        "inst_1": {"model_patch": "", "model_name_or_path": "claude"},
+    }
+    (pred_dir / "preds.json").write_text(json.dumps(preds))
 
     patches = gather_patches(pred_dir, Condition.TESTS_ONLY)
-    assert len(patches) == 2, "must read both .pred files"
+    assert len(patches) == 2, "must read both entries from preds.json"
     ids = {p["instance_id"] for p in patches}
-    assert ids == {"inst_0", "inst_1"}, "instance_ids must match filenames"
+    assert ids == {"inst_0", "inst_1"}, "instance_ids must match preds.json keys"
+    assert all(p["prefix"] == Condition.TESTS_ONLY for p in patches), (
+        "prefix must be condition"
+    )
+
+
+@pytest.mark.unit
+def test_gather_patches_uses_model_patch_field(tmp_path):
+    pred_dir = tmp_path / "tests_only"
+    pred_dir.mkdir()
+    preds = {
+        "inst_0": {"model_patch": "the patch content", "model_name_or_path": "claude"}
+    }
+    (pred_dir / "preds.json").write_text(json.dumps(preds))
+
+    patches = gather_patches(pred_dir, Condition.TESTS_ONLY)
+    assert patches[0]["patch"] == "the patch content", (
+        "must extract model_patch as patch"
+    )
 
 
 @pytest.mark.unit
@@ -63,17 +80,6 @@ def test_write_patches_json_round_trips(tmp_path):
     write_patches_json(patches, out)
     loaded = json.loads(out.read_text())
     assert loaded == patches, "round-trip must preserve patches"
-
-
-@pytest.mark.unit
-def test_gather_patches_handles_missing_instance_id(tmp_path):
-    pred_dir = tmp_path / "preds"
-    pred_dir.mkdir()
-    (pred_dir / "fallback.pred").write_text(json.dumps({"patch": "something"}))
-    patches = gather_patches(pred_dir, Condition.TESTS_ONLY)
-    assert patches[0]["instance_id"] == "fallback", (
-        "must fall back to stem when no instance_id"
-    )
 
 
 @pytest.mark.unit

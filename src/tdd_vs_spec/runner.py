@@ -152,17 +152,26 @@ def _run_single(
 def gather_patches(pred_dir: Path, condition: Condition) -> list[dict[str, str]]:
     assert pred_dir is not None, "pred_dir must not be None"
     assert condition is not None, "condition must not be None"
-    patches: list[dict[str, str]] = []
-    for pred_file in pred_dir.glob("*.pred"):
-        data = cast(dict[str, str], json.loads(pred_file.read_text()))
-        patches.append(
-            {
-                "instance_id": data.get("instance_id", pred_file.stem),
-                "patch": data.get("patch", ""),
-                "prefix": condition,
-            }
-        )
-    return patches
+
+    preds_file = pred_dir / "preds.json"
+    if not preds_file.exists():
+        logger.warning("No preds.json found in %s", pred_dir)
+        return []
+    try:
+        preds = cast(dict[str, dict[str, str]], json.loads(preds_file.read_text()))
+    except (json.JSONDecodeError, OSError) as exc:
+        logger.warning("Could not read preds.json from %s: %s", pred_dir, exc)
+        return []
+
+    assert isinstance(preds, dict), "preds.json must be a dict keyed by instance_id"
+    return [
+        {
+            "instance_id": instance_id,
+            "patch": pred.get("model_patch", ""),
+            "prefix": condition,
+        }
+        for instance_id, pred in preds.items()
+    ]
 
 
 def write_patches_json(patches: list[dict[str, str]], path: Path) -> None:
