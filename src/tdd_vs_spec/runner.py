@@ -3,7 +3,6 @@ import logging
 import subprocess  # nosec B404
 import sys
 import tempfile
-from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 from typing import cast
 
@@ -107,17 +106,23 @@ def run_condition(
 ) -> Path:
     assert max_workers > 0, "max_workers must be positive"
     assert instances_path.exists(), f"instances file not found: {instances_path}"
+    assert mini_swe_agent_dir.exists(), "mini_swe_agent_dir must exist"
     instances = [i for i in read_instances(instances_path) if i.condition == condition]
     pred_dir = output_dir / condition
     pred_dir.mkdir(parents=True, exist_ok=True)
 
-    existing = {p.stem for p in pred_dir.glob("*.pred")}
-    pending = [i for i in instances if i.instance_id not in existing]
-    _write_instances_json(pending, pred_dir / "batch_instances.json")
-
+    preds_file = pred_dir / "preds.json"
+    existing_preds = _load_preds(preds_file)
+    pending = [i for i in instances if i.instance_id not in existing_preds]
     console.print(
         f"[bold]{condition}[/bold]: {len(pending)} pending / {len(instances)} total"
     )
+
+    if not pending:
+        return pred_dir
+
+    batch_instances_file = pred_dir / "batch_instances.json"
+    _write_instances_json(pending, batch_instances_file)
 
     with Progress(
         SpinnerColumn(),
@@ -126,28 +131,28 @@ def run_condition(
         TaskProgressColumn(),
         console=console,
     ) as progress:
-        task = progress.add_task(f"Running {condition}", total=len(pending))
+        _ = progress.add_task(
+            f"Running {condition} ({len(pending)} instances)", total=None
+        )
+        result = _invoke_mini_extra(
+            batch_instances_file,
+            pred_dir,
+            model,
+            max_workers,
+            mini_swe_agent_dir,
+            timeout,
+        )
 
-        with ThreadPoolExecutor(max_workers=max_workers) as executor:
-            futures = {
-                executor.submit(
-                    _run_single,
-                    instance,
-                    pred_dir / f"{instance.instance_id}.pred",
-                    mini_swe_agent_dir,
-                    model,
-                    timeout,
-                ): instance
-                for instance in pending
-            }
-            for future in as_completed(futures):
-                instance = futures[future]
-                try:
-                    future.result()
-                except Exception as e:
-                    console.print(f"[red]Error {instance.instance_id}[/red]: {e}")
-                progress.advance(task)
+    if result is None:
+        console.print(f"[yellow]Timeout for {condition}[/yellow]")
+        return pred_dir
 
+    if result.returncode != 0:
+        console.print(
+            f"[red]run-batch failed for {condition}[/red]: {result.stderr[-500:]}"
+        )
+
+    _merge_preds(preds_file, existing_preds)
     return pred_dir
 
 
