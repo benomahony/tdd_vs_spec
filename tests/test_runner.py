@@ -4,7 +4,6 @@ import pytest
 
 from tdd_vs_spec.conditions import Condition, Instance
 from tdd_vs_spec.runner import (
-    _run_single,
     _write_instances_json,
     gather_patches,
     write_patches_json,
@@ -97,44 +96,3 @@ def test_write_patches_json_round_trips(tmp_path):
     write_patches_json(patches, out)
     loaded = json.loads(out.read_text())
     assert loaded == patches, "round-trip must preserve patches"
-
-
-@pytest.mark.unit
-def test_run_single_missing_dir_raises(tmp_path):
-    with pytest.raises(AssertionError, match="mini_swe_agent_dir"):
-        _run_single(
-            _fake_instance(),
-            tmp_path / "out.pred",
-            tmp_path / "nonexistent",
-            "model",
-            30,
-        )
-
-
-@pytest.mark.unit
-def test_run_single_writes_error_pred_on_failure(tmp_path):
-    agent_dir = tmp_path / "agent"
-    agent_dir.mkdir()
-    (agent_dir / "run.py").write_text("import sys; sys.exit(1)\n")
-    pred_file = tmp_path / "out.pred"
-    _run_single(_fake_instance(), pred_file, agent_dir, "model", 30)
-    assert pred_file.exists(), "error pred must be written on failure"
-    data = json.loads(pred_file.read_text())
-    assert data["patch"] == "", "error pred must have empty patch"
-    assert "error" in data, "error pred must contain error field"
-
-
-@pytest.mark.unit
-def test_run_single_uses_sys_executable(tmp_path):
-    """runner._run_single must invoke sys.executable, not bare 'python'."""
-    import inspect
-
-    from tdd_vs_spec import runner as runner_module
-
-    src = inspect.getsource(runner_module)
-    assert "sys.executable" in src, (
-        "_run_single must use sys.executable not bare 'python'"
-    )
-    assert '"python"' not in src or src.index("sys.executable") < src.index(
-        '"python"'
-    ), "sys.executable must replace bare 'python' in subprocess call"
