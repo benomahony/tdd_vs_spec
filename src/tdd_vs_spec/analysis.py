@@ -1,6 +1,6 @@
 from math import comb
 from pathlib import Path
-from typing import NamedTuple
+from typing import NamedTuple, cast
 
 import duckdb
 from rich.table import Table
@@ -42,7 +42,9 @@ def significance_test(
         {"a": cond_a, "b": cond_b},
     ).fetchall()
 
-    by_cond = {row[0]: (int(row[1]), int(row[2])) for row in rows}
+    by_cond = {
+        cast(str, row[0]): (cast(int, row[1]), cast(int, row[2])) for row in rows
+    }
     if cond_a not in by_cond:
         raise ValueError(f"{cond_a} not found in results")
     if cond_b not in by_cond:
@@ -113,7 +115,7 @@ def pass_rates(db: duckdb.DuckDBPyConnection) -> dict[str, float]:
     """).fetchall()
 
     assert rows is not None, "query must return rows"
-    return {row[0]: row[3] for row in rows}
+    return {cast(str, row[0]): cast(float, row[3]) for row in rows}
 
 
 def print_summary(db: duckdb.DuckDBPyConnection) -> None:
@@ -144,8 +146,14 @@ def print_summary(db: duckdb.DuckDBPyConnection) -> None:
     }
 
     for row in rows:
-        label = condition_labels.get(row[0], row[0])
-        table.add_row(label, str(row[1]), str(row[2]), str(rates.get(row[0], 0.0)))
+        cond = cast(str, row[0])
+        label = condition_labels.get(cast(Condition, cond), cond)
+        table.add_row(
+            label,
+            str(cast(int, row[1])),
+            str(cast(int, row[2])),
+            str(rates.get(cond, 0.0)),
+        )
 
     console.print(table)
     _print_delta(rates)
@@ -212,7 +220,12 @@ def per_repo_breakdown(db: duckdb.DuckDBPyConnection) -> None:
     table.add_column("Pass rate (%)", justify="right")
 
     for row in rows:
-        table.add_row(row[0], row[1], str(row[2]), str(row[3]))
+        table.add_row(
+            cast(str, row[0]),
+            cast(str, row[1]),
+            str(cast(int, row[2])),
+            str(cast(float, row[3])),
+        )
 
     console.print(table)
 
@@ -242,6 +255,8 @@ def cost_analysis(db: duckdb.DuckDBPyConnection) -> None:
     table.add_column("Avg steps", justify="right")
 
     for row in rows:
-        table.add_row(row[0], f"${row[1]:.4f}", str(row[2]))
+        table.add_row(
+            cast(str, row[0]), f"${cast(float, row[1]):.4f}", str(cast(float, row[2]))
+        )
 
     console.print(table)

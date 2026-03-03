@@ -1,7 +1,7 @@
 from collections.abc import Iterable
 from enum import StrEnum
 from pathlib import Path
-from typing import Any, cast
+from typing import cast
 import json
 
 from pydantic import BaseModel
@@ -36,7 +36,7 @@ def load_instances(
     llm_specs: dict[str, str] | None = None,
     limit: int | None = None,
     *,
-    dataset: Iterable[dict[str, Any]] | None = None,
+    dataset: Iterable[dict[str, str]] | None = None,
 ) -> list[Instance]:
     assert condition is not None, "condition must not be None"
     assert isinstance(condition, Condition), "condition must be a Condition enum member"
@@ -46,13 +46,13 @@ def load_instances(
         hf_ds = load_dataset("ScaleAI/SWE-bench_Pro", split="test")  # nosec B615
         if limit:
             hf_ds = hf_ds.select(range(limit))
-        rows = cast(list[dict[str, Any]], list(hf_ds))
+        rows = cast(list[dict[str, str]], list(hf_ds))
     else:
         rows = list(dataset)
         if limit:
             rows = rows[:limit]
 
-    instances = []
+    instances: list[Instance] = []
     for row in rows:
         match condition:
             case Condition.TESTS_ONLY:
@@ -94,7 +94,7 @@ def write_instances(instances: list[Instance], path: Path) -> None:
 def read_instances(path: Path) -> list[Instance]:
     assert path is not None, "path must not be None"
     assert path.exists(), f"instances file not found: {path}"
-    instances = []
+    instances: list[Instance] = []
     with path.open() as f:
         for line in f:
             if line.strip():
@@ -109,6 +109,6 @@ def load_llm_specs(path: Path) -> dict[str, str]:
     with path.open() as f:
         for line in f:
             if line.strip():
-                row = json.loads(line)
+                row = cast(dict[str, str], json.loads(line))
                 specs[row["instance_id"]] = row["spec"]
     return specs
