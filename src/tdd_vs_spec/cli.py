@@ -119,6 +119,63 @@ def run(
 
 
 @app.command()
+def pipeline(
+    output_dir: Path = typer.Option(
+        RESULTS_DIR / "preds", help="Output dir for predictions"
+    ),
+    instances_file: Path = typer.Option(
+        DATA_DIR / "instances.jsonl", help="Instances file (written if absent)"
+    ),
+    llm_specs: Path = typer.Option(DATA_DIR / "llm_specs.jsonl", help="LLM specs file"),
+    mini_swe_agent: Path = typer.Option(
+        Path("SWE-bench_Pro-os/mini-swe-agent"), help="Path to mini-swe-agent directory"
+    ),
+    model: str = typer.Option("claude-sonnet-4-6", help="Model to use"),
+    conditions: list[Condition] = typer.Option(
+        list(Condition), help="Conditions to run"
+    ),
+    max_workers: int = typer.Option(4, help="Parallel workers"),
+    limit: int | None = typer.Option(None, help="Limit instances per condition"),
+) -> None:
+    """Prepare instances then run the agent end-to-end."""
+    assert max_workers > 0, "max_workers must be positive"
+    assert mini_swe_agent is not None, "mini_swe_agent path must not be None"
+    if not instances_file.exists():
+        specs = load_llm_specs(llm_specs) if llm_specs.exists() else None
+        if specs is None and Condition.TESTS_PLUS_LLM_SPEC in conditions:
+            console.print(
+                "[yellow]No LLM specs — skipping TESTS_PLUS_LLM_SPEC[/yellow]"
+            )
+        all_instances: list[Instance] = []
+        for condition in conditions:
+            if condition == Condition.TESTS_PLUS_LLM_SPEC and specs is None:
+                continue
+            all_instances.extend(
+                load_instances(condition, llm_specs=specs, limit=limit)
+            )
+        write_instances(all_instances, instances_file)
+        console.print(
+            f"[green]Prepared {len(all_instances)} instances -> {instances_file}[/green]"
+        )
+    for condition in conditions:
+        pred_dir = run_condition(
+            instances_file,
+            output_dir,
+            condition,
+            mini_swe_agent_dir=mini_swe_agent,
+            model=model,
+            max_workers=max_workers,
+            limit=limit,
+        )
+        patches = gather_patches(pred_dir, condition)
+        patches_path = output_dir / f"{condition}_patches.json"
+        write_patches_json(patches, patches_path)
+        console.print(
+            f"[green]{condition}[/green]: {len(patches)} patches -> {patches_path}"
+        )
+
+
+@app.command()
 def evaluate(
     swe_bench_pro_dir: Path = typer.Argument(help="Path to SWE-bench_Pro-os checkout"),
     preds_dir: Path = typer.Option(RESULTS_DIR / "preds", help="Predictions dir"),
