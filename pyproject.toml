@@ -32,7 +32,6 @@ reportMissingTypeStubs = "none"
 reportCallInDefaultInitializer = "none"
 reportUnknownMemberType = "none"
 reportUnknownVariableType = "none"
-reportUnusedFunction = "none"
 
 [tool.bandit]
 skips = ["B101"]

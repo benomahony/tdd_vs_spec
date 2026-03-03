@@ -1,8 +1,6 @@
 import json
 import logging
 import subprocess  # nosec B404
-import sys
-import tempfile
 from pathlib import Path
 from typing import cast
 
@@ -154,63 +152,6 @@ def run_condition(
 
     _merge_preds(preds_file, existing_preds)
     return pred_dir
-
-
-def _run_single(
-    instance: Instance,
-    pred_file: Path,
-    mini_swe_agent_dir: Path,
-    model: str,
-    timeout: int,
-) -> None:
-    assert instance is not None, "instance must not be None"
-    assert mini_swe_agent_dir.exists(), "mini_swe_agent_dir must exist"
-    assert timeout > 0, "timeout must be positive"
-    with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
-        json.dump(
-            {
-                "instance_id": instance.instance_id,
-                "problem_statement": instance.problem_statement,
-                "repo": instance.repo,
-                "base_commit": instance.base_commit,
-                "dockerhub_tag": instance.dockerhub_tag,
-            },
-            f,
-        )
-        task_file = Path(f.name)
-
-    try:
-        result = subprocess.run(  # nosec B603
-            [
-                sys.executable,
-                "run.py",
-                "--task-file",
-                str(task_file),
-                "--model",
-                model,
-                "--output",
-                str(pred_file),
-            ],
-            cwd=mini_swe_agent_dir,
-            capture_output=True,
-            text=True,
-            timeout=timeout,
-        )
-        if result.returncode != 0:
-            console.print(
-                f"[red]Failed {instance.instance_id}[/red]: {result.stderr[-500:]}"
-            )
-            _ = pred_file.write_text(
-                json.dumps(
-                    {
-                        "instance_id": instance.instance_id,
-                        "patch": "",
-                        "error": result.stderr[-500:],
-                    }
-                )
-            )
-    finally:
-        task_file.unlink(missing_ok=True)
 
 
 def gather_patches(pred_dir: Path, condition: Condition) -> list[dict[str, str]]:
