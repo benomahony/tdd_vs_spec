@@ -3,20 +3,40 @@ import json
 import pytest
 
 from tdd_vs_spec.conditions import Condition, Instance
-from tdd_vs_spec.runner import _run_single, gather_patches, write_patches_json
+from tdd_vs_spec.runner import (
+    _run_single,
+    _write_instances_json,
+    gather_patches,
+    write_patches_json,
+)
 
 
-def _fake_instance() -> Instance:
+def _fake_instance(i: int = 0) -> Instance:
     return Instance(
-        instance_id="test__repo__0",
+        instance_id=f"test__repo__{i}",
         condition=Condition.TESTS_ONLY,
         problem_statement="fix it",
         test_patch="def test_x(): pass",
         patch="",
-        dockerhub_tag="tag",
+        dockerhub_tag=f"org/img:tag{i}",
         repo="test/repo",
         base_commit="abc123",
     )
+
+
+@pytest.mark.unit
+def test_write_instances_json_includes_required_fields(tmp_path):
+    instances = [_fake_instance(0), _fake_instance(1)]
+    out = tmp_path / "instances.json"
+    _write_instances_json(instances, out)
+    data = json.loads(out.read_text())
+    assert len(data) == 2, "must write one entry per instance"
+    assert data[0]["image_name"] == "org/img:tag0", (
+        "must use dockerhub_tag as image_name"
+    )
+    assert "problem_statement" in data[0], "must include problem_statement"
+    assert "test_patch" in data[0], "must include test_patch"
+    assert "instance_id" in data[0], "must include instance_id"
 
 
 @pytest.mark.unit

@@ -1,21 +1,40 @@
 import json
+import logging
 import subprocess  # nosec B404
 import sys
 import tempfile
-from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from typing import Any
+from pathlib import Path
+from typing import cast
 
 from rich.progress import (
+    BarColumn,
     Progress,
     SpinnerColumn,
-    TextColumn,
-    BarColumn,
     TaskProgressColumn,
+    TextColumn,
 )
 
 from ._console import console
 from .conditions import Condition, Instance, read_instances
+
+logger = logging.getLogger(__name__)
+
+
+def _write_instances_json(instances: list[Instance], path: Path) -> None:
+    assert instances is not None, "instances must not be None"
+    assert path is not None, "path must not be None"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    data = [
+        {
+            "instance_id": i.instance_id,
+            "image_name": i.dockerhub_tag,
+            "problem_statement": i.problem_statement,
+            "test_patch": i.test_patch,
+        }
+        for i in instances
+    ]
+    _ = path.write_text(json.dumps(data, indent=2))
 
 
 def run_condition(
@@ -35,6 +54,7 @@ def run_condition(
 
     existing = {p.stem for p in pred_dir.glob("*.pred")}
     pending = [i for i in instances if i.instance_id not in existing]
+    _write_instances_json(pending, pred_dir / "batch_instances.json")
 
     console.print(
         f"[bold]{condition}[/bold]: {len(pending)} pending / {len(instances)} total"
@@ -129,12 +149,12 @@ def _run_single(
         task_file.unlink(missing_ok=True)
 
 
-def gather_patches(pred_dir: Path, condition: Condition) -> list[dict[str, Any]]:
+def gather_patches(pred_dir: Path, condition: Condition) -> list[dict[str, str]]:
     assert pred_dir is not None, "pred_dir must not be None"
     assert condition is not None, "condition must not be None"
-    patches = []
+    patches: list[dict[str, str]] = []
     for pred_file in pred_dir.glob("*.pred"):
-        data = json.loads(pred_file.read_text())
+        data = cast(dict[str, str], json.loads(pred_file.read_text()))
         patches.append(
             {
                 "instance_id": data.get("instance_id", pred_file.stem),
@@ -145,7 +165,7 @@ def gather_patches(pred_dir: Path, condition: Condition) -> list[dict[str, Any]]
     return patches
 
 
-def write_patches_json(patches: list[dict[str, Any]], path: Path) -> None:
+def write_patches_json(patches: list[dict[str, str]], path: Path) -> None:
     assert patches is not None, "patches must not be None"
     assert path is not None, "path must not be None"
     path.parent.mkdir(parents=True, exist_ok=True)
