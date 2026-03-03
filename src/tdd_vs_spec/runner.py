@@ -37,6 +37,65 @@ def _write_instances_json(instances: list[Instance], path: Path) -> None:
     _ = path.write_text(json.dumps(data, indent=2))
 
 
+def _load_preds(preds_file: Path) -> dict[str, dict[str, str]]:
+    assert preds_file is not None, "preds_file must not be None"
+    assert isinstance(preds_file, Path), "preds_file must be a Path"
+    if not preds_file.exists():
+        return {}
+    try:
+        return cast(dict[str, dict[str, str]], json.loads(preds_file.read_text()))
+    except json.JSONDecodeError:
+        logger.warning("Corrupt preds.json in %s, starting fresh", preds_file.parent)
+        return {}
+
+
+def _invoke_mini_extra(
+    batch_file: Path,
+    pred_dir: Path,
+    model: str,
+    max_workers: int,
+    mini_swe_agent_dir: Path,
+    timeout: int,
+) -> "subprocess.CompletedProcess[str] | None":
+    assert batch_file.exists(), "batch_file must exist"
+    assert mini_swe_agent_dir.exists(), "mini_swe_agent_dir must exist"
+    try:
+        return subprocess.run(  # nosec B603, B607
+            [
+                "mini-extra",
+                "run-batch",
+                "--instances-path",
+                str(batch_file),
+                "--output-dir",
+                str(pred_dir),
+                "--model",
+                model,
+                "--num-workers",
+                str(max_workers),
+                "--no-shuffle",
+            ],
+            cwd=mini_swe_agent_dir,
+            capture_output=True,
+            text=True,
+            timeout=timeout,
+        )
+    except subprocess.TimeoutExpired:
+        return None
+
+
+def _merge_preds(preds_file: Path, existing_preds: dict[str, dict[str, str]]) -> None:
+    assert preds_file is not None, "preds_file must not be None"
+    assert existing_preds is not None, "existing_preds must not be None"
+    if not preds_file.exists() or not existing_preds:
+        return
+    try:
+        new_preds = cast(dict[str, dict[str, str]], json.loads(preds_file.read_text()))
+        merged = {**existing_preds, **new_preds}
+        _ = preds_file.write_text(json.dumps(merged, indent=2))
+    except json.JSONDecodeError:
+        logger.warning("Could not merge preds.json for %s", preds_file.parent)
+
+
 def run_condition(
     instances_path: Path,
     output_dir: Path,
