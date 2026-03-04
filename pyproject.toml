@@ -48,5 +48,6 @@ dev = [
   "pytest>=9.0.2",
   "pytest-asyncio>=1.3.0",
   "pytest-xdist>=3.8.0",
+  "ruff>=0.15.4",
   "vulture>=2.14",
 ]
