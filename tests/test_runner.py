@@ -1,10 +1,12 @@
 import json
+from pathlib import Path
+from typing import cast
 
 import pytest
 
 from tdd_vs_spec.conditions import Condition, Instance
 from tdd_vs_spec.runner import (
-    _write_instances_json,
+    write_instances_json,
     gather_patches,
     write_patches_json,
 )
@@ -24,11 +26,11 @@ def _fake_instance(i: int = 0) -> Instance:
 
 
 @pytest.mark.unit
-def test_write_instances_json_includes_required_fields(tmp_path):
+def test_write_instances_json_includes_required_fields(tmp_path: Path):
     instances = [_fake_instance(0), _fake_instance(1)]
     out = tmp_path / "instances.json"
-    _write_instances_json(instances, out)
-    data = json.loads(out.read_text())
+    write_instances_json(instances, out)
+    data = cast(list[dict[str, str]], json.loads(out.read_text()))
     assert len(data) == 2, "must write one entry per instance"
     assert data[0]["image_name"] == "org/img:tag0", (
         "must use dockerhub_tag as image_name"
@@ -39,14 +41,14 @@ def test_write_instances_json_includes_required_fields(tmp_path):
 
 
 @pytest.mark.unit
-def test_gather_patches_reads_preds_json(tmp_path):
+def test_gather_patches_reads_preds_json(tmp_path: Path):
     pred_dir = tmp_path / "tests_only"
     pred_dir.mkdir()
     preds = {
         "inst_0": {"model_patch": "diff --git a/f.py", "model_name_or_path": "claude"},
         "inst_1": {"model_patch": "", "model_name_or_path": "claude"},
     }
-    (pred_dir / "preds.json").write_text(json.dumps(preds))
+    _ = (pred_dir / "preds.json").write_text(json.dumps(preds))
 
     patches = gather_patches(pred_dir, Condition.TESTS_ONLY)
     assert len(patches) == 2, "must read both entries from preds.json"
@@ -58,13 +60,13 @@ def test_gather_patches_reads_preds_json(tmp_path):
 
 
 @pytest.mark.unit
-def test_gather_patches_uses_model_patch_field(tmp_path):
+def test_gather_patches_uses_model_patch_field(tmp_path: Path):
     pred_dir = tmp_path / "tests_only"
     pred_dir.mkdir()
     preds = {
         "inst_0": {"model_patch": "the patch content", "model_name_or_path": "claude"}
     }
-    (pred_dir / "preds.json").write_text(json.dumps(preds))
+    _ = (pred_dir / "preds.json").write_text(json.dumps(preds))
 
     patches = gather_patches(pred_dir, Condition.TESTS_ONLY)
     assert patches[0]["patch"] == "the patch content", (
@@ -73,7 +75,7 @@ def test_gather_patches_uses_model_patch_field(tmp_path):
 
 
 @pytest.mark.unit
-def test_gather_patches_returns_empty_when_no_preds_file(tmp_path):
+def test_gather_patches_returns_empty_when_no_preds_file(tmp_path: Path):
     pred_dir = tmp_path / "tests_only"
     pred_dir.mkdir()
     patches = gather_patches(pred_dir, Condition.TESTS_ONLY)
@@ -81,18 +83,18 @@ def test_gather_patches_returns_empty_when_no_preds_file(tmp_path):
 
 
 @pytest.mark.unit
-def test_gather_patches_returns_empty_on_corrupt_preds_json(tmp_path):
+def test_gather_patches_returns_empty_on_corrupt_preds_json(tmp_path: Path):
     pred_dir = tmp_path / "tests_only"
     pred_dir.mkdir()
-    (pred_dir / "preds.json").write_text("{not valid json")
+    _ = (pred_dir / "preds.json").write_text("{not valid json")
     patches = gather_patches(pred_dir, Condition.TESTS_ONLY)
     assert patches == [], "must return empty list on corrupt preds.json"
 
 
 @pytest.mark.unit
-def test_write_patches_json_round_trips(tmp_path):
+def test_write_patches_json_round_trips(tmp_path: Path):
     patches = [{"instance_id": "a", "patch": "x", "prefix": "tests_only"}]
     out = tmp_path / "patches.json"
     write_patches_json(patches, out)
-    loaded = json.loads(out.read_text())
+    loaded = cast(list[dict[str, str]], json.loads(out.read_text()))
     assert loaded == patches, "round-trip must preserve patches"
