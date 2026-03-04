@@ -12,13 +12,13 @@ from rich.progress import (
     TextColumn,
 )
 
-from ._console import console
+from ._console import console as console
 from .conditions import Condition, Instance, read_instances
 
 logger = logging.getLogger(__name__)
 
 
-def _write_instances_json(instances: list[Instance], path: Path) -> None:
+def write_instances_json(instances: list[Instance], path: Path) -> None:
     assert instances is not None, "instances must not be None"
     assert path is not None, "path must not be None"
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -122,7 +122,7 @@ def run_condition(
         return pred_dir
 
     batch_instances_file = pred_dir / "batch_instances.json"
-    _write_instances_json(pending, batch_instances_file)
+    write_instances_json(pending, batch_instances_file)
 
     with Progress(
         SpinnerColumn(),

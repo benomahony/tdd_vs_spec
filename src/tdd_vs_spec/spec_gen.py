@@ -84,7 +84,7 @@ def _load_dataset_rows(
     return rows[:limit] if limit else rows
 
 
-def _read_done_ids(output_path: Path) -> set[str]:
+def read_done_ids(output_path: Path) -> set[str]:
     assert output_path is not None, "output_path must not be None"
     assert isinstance(output_path, Path), "output_path must be a Path"
     done: set[str] = set()
@@ -131,7 +131,7 @@ async def generate_all_specs(
     assert concurrency > 0, "concurrency must be positive"
 
     rows = _load_dataset_rows(_dataset, limit)
-    pending = [r for r in rows if r["instance_id"] not in _read_done_ids(output_path)]
+    pending = [r for r in rows if r["instance_id"] not in read_done_ids(output_path)]
     semaphore = asyncio.Semaphore(concurrency)
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
