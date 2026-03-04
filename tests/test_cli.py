@@ -1,3 +1,5 @@
+from pathlib import Path
+
 import pytest
 from typer.testing import CliRunner
 
@@ -7,7 +9,7 @@ runner = CliRunner()
 
 
 @pytest.mark.unit
-def test_evaluate_no_hardcoded_username(tmp_path):
+def test_evaluate_no_hardcoded_username(tmp_path: Path):
     result = runner.invoke(app, ["evaluate", str(tmp_path)])
     assert result.exit_code == 0, result.output
     assert "jefzda" not in result.output, "dockerhub username must not be hardcoded"
@@ -23,7 +25,7 @@ def test_generate_specs_cli_accepts_model_option():
 
 
 @pytest.mark.unit
-def test_evaluate_accepts_custom_username(tmp_path):
+def test_evaluate_accepts_custom_username(tmp_path: Path):
     result = runner.invoke(
         app, ["evaluate", str(tmp_path), "--dockerhub-username", "myuser"]
     )
