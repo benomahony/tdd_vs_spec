@@ -30,8 +30,8 @@ def test_write_instances_json_includes_required_fields(tmp_path):
     _write_instances_json(instances, out)
     data = json.loads(out.read_text())
     assert len(data) == 2, "must write one entry per instance"
-    assert data[0]["image_name"] == "org/img:tag0", (
-        "must use dockerhub_tag as image_name"
+    assert data[0]["image_name"] == "jefzda/sweap-images:org/img:tag0", (
+        "must use full Docker image URI (dockerhub_username/sweap-images:dockerhub_tag)"
     )
     assert "problem_statement" in data[0], "must include problem_statement"
     assert "test_patch" in data[0], "must include test_patch"

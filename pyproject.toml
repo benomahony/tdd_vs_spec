@@ -16,6 +16,9 @@ dependencies = [
   "duckdb>=1.0",
 ]
 
+[project.optional-dependencies]
+agent = ["mini-swe-agent"]
+
 [project.scripts]
 tdd-vs-spec = "tdd_vs_spec.cli:app"
 tdd_vs_spec = "tdd_vs_spec.cli:app"

@@ -8,6 +8,8 @@ runner = CliRunner()
 
 @pytest.mark.unit
 def test_evaluate_no_hardcoded_username(tmp_path):
+    # Pre-create CSV so evaluate skips Hugging Face download
+    (tmp_path / "swe_bench_pro_full.csv").write_text("instance_id\n")
     result = runner.invoke(app, ["evaluate", str(tmp_path)])
     assert result.exit_code == 0, result.output
     assert "jefzda" not in result.output, "dockerhub username must not be hardcoded"
@@ -24,6 +26,7 @@ def test_generate_specs_cli_accepts_model_option():
 
 @pytest.mark.unit
 def test_evaluate_accepts_custom_username(tmp_path):
+    (tmp_path / "swe_bench_pro_full.csv").write_text("instance_id\n")
     result = runner.invoke(
         app, ["evaluate", str(tmp_path), "--dockerhub-username", "myuser"]
     )
