@@ -1697,16 +1697,14 @@ wheels = [
 
 [[package]]
 name = "mini-swe-agent"
-version = "2.2.6"
+version = "1.17.5"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "datasets" },
     { name = "jinja2" },
     { name = "litellm" },
     { name = "openai" },
     { name = "platformdirs" },
     { name = "prompt-toolkit" },
-    { name = "pydantic" },
     { name = "python-dotenv" },
     { name = "pyyaml" },
     { name = "requests" },
@@ -1715,9 +1713,9 @@ dependencies = [
     { name = "textual" },
     { name = "typer" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/cc/81/9d171e608a1d68e1e07d83409f0cf3e53c2caec3aaa55f0e91d20fe105c2/mini_swe_agent-2.2.6.tar.gz", hash = "sha256:bafefe780d1ec92ccc6bc623a27cfe9c778be13c053aec792978bf178116b7bc", size = 59260 }
+sdist = { url = "https://files.pythonhosted.org/packages/d5/bd/8a567cf749a76a403e9f25f22fb0fe786aa0cef925967b1eedb84a245803/mini_swe_agent-1.17.5.tar.gz", hash = "sha256:1dd6003f57f6d41975cd4a77993e25895b6fd64c55ce663132a220f15f1cdbec", size = 50503 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/49/98/cafc0afc70279d9a40f0bcf1d881cc433830034b6f78e166e8605d63f407/mini_swe_agent-2.2.6-py3-none-any.whl", hash = "sha256:3b89ba3bb0b7dd3ee9698ca96ca2fa5576683f662cf0861f22aaabacf2664012", size = 102158 },
+    { url = "https://files.pythonhosted.org/packages/d3/31/dda3929bcd517637dd050cfb9c04a70aef7583c58f7ab15fd69faa0086d7/mini_swe_agent-1.17.5-py3-none-any.whl", hash = "sha256:6aff069f6c7fa250a1c2f7852ec13b3b51391368d15be4335b8c192e874b2f92", size = 81191 },
 ]
 
 [[package]]
@@ -3211,6 +3209,7 @@ dev = [
     { name = "basedpyright" },
     { name = "cliqa" },
     { name = "deptry" },
+    { name = "mini-swe-agent" },
     { name = "pytest" },
     { name = "pytest-asyncio" },
     { name = "pytest-cov" },
@@ -3238,6 +3237,7 @@ dev = [
     { name = "basedpyright", specifier = ">=1.38.2" },
     { name = "cliqa", specifier = ">=0.1.5" },
     { name = "deptry", specifier = ">=0.24.0" },
+    { name = "mini-swe-agent", specifier = "<2.0" },
     { name = "pytest", specifier = ">=9.0.2" },
     { name = "pytest-asyncio", specifier = ">=1.3.0" },
     { name = "pytest-cov", specifier = ">=7.0.0" },

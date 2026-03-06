@@ -7,11 +7,11 @@ import json
 import time
 from pathlib import Path
 
+import yaml
 from minisweagent.config import builtin_config_dir, get_config_path
 from minisweagent.run.extra.swebench import process_instance
 from minisweagent.run.extra.utils.batch_progress import RunBatchProgressManager
 from minisweagent.utils.log import add_file_handler, logger
-import yaml
 from rich.live import Live
 
 
@@ -29,7 +29,7 @@ def _load_instances(instances_path: Path) -> list[dict[str, str]]:
 def _build_config(
     output_dir: Path, model: str
 ) -> tuple[dict[str, object], RunBatchProgressManager]:
-    assert output_dir is not None, "output_dir must not be None"
+    assert isinstance(output_dir, Path), "output_dir must be a Path"
     assert isinstance(model, str) and model, "model must be a non-empty string"
     add_file_handler(output_dir / "minisweagent.log")
     config_spec = builtin_config_dir / "extra" / "swebench.yaml"
@@ -44,7 +44,7 @@ def _build_config(
 
 
 def _process_futures(
-    futures: dict[concurrent.futures.Future, str],
+    futures: dict[concurrent.futures.Future[None], str],
     progress_manager: RunBatchProgressManager,
 ) -> None:
     assert futures is not None, "futures must not be None"
@@ -79,13 +79,13 @@ def run_batch_in_process(
         return
     output_dir.mkdir(parents=True, exist_ok=True)
     logger.info("Results will be saved to %s", output_dir)
-    config, progress_manager = _build_config(output_dir, model)
+    config, _ = _build_config(output_dir, model)
     progress_manager = RunBatchProgressManager(
         len(instances), output_dir / f"exit_statuses_{time.time()}.yaml"
     )
     with Live(progress_manager.render_group, refresh_per_second=4):
         with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
-            future_to_id = {
+            future_to_id: dict[concurrent.futures.Future[None], str] = {
                 executor.submit(
                     process_instance, instance, output_dir, config, progress_manager
                 ): instance["instance_id"]
@@ -99,5 +99,5 @@ def run_batch_in_process(
                 )
                 for future in future_to_id:
                     if not future.running() and not future.done():
-                        future.cancel()
+                        _ = future.cancel()
                 _process_futures(future_to_id, progress_manager)

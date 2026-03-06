@@ -31,8 +31,14 @@ markers = [
   "integration: slow tests that call real APIs or spawn processes",
 ]
 
+
 [tool.basedpyright]
-ignore = ["src/tdd_vs_spec/_minibatch.py"]
+reportMissingTypeStubs = "none"
+reportCallInDefaultInitializer = "none"
+reportUnknownMemberType = "none"
+reportUnknownVariableType = "none"
+reportAny = "none"
+reportUnknownArgumentType = "none"
 
 [tool.bandit]
 skips = ["B101"]
@@ -46,6 +52,7 @@ dev = [
   "basedpyright>=1.38.2",
   "cliqa>=0.1.5",
   "deptry>=0.24.0",
+  "mini-swe-agent<2.0",
   "pytest>=9.0.2",
   "pytest-asyncio>=1.3.0",
   "pytest-cov>=7.0.0",
