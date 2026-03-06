@@ -40,6 +40,9 @@ reportUnknownVariableType = "none"
 reportAny = "none"
 reportUnknownArgumentType = "none"
 
+[tool.ruff]
+exclude = ["SWE-bench_Pro-os"]
+
 [tool.deptry]
 exclude = ["SWE-bench_Pro-os"]
 
