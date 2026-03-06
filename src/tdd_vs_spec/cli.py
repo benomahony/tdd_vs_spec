@@ -1,4 +1,5 @@
 import asyncio
+import platform
 from pathlib import Path
 
 import typer
@@ -60,6 +61,16 @@ def prepare(
         DATA_DIR / "llm_specs.jsonl", help="Generated LLM specs"
     ),
     limit: int | None = typer.Option(None, help="Limit number of instances"),
+    swe_bench_pro_dir: Path = typer.Option(
+        Path("SWE-bench_Pro-os"), help="Path to SWE-bench_Pro-os checkout"
+    ),
+    dockerhub_username: str = typer.Option(
+        "jefzda", help="Docker Hub username for sweap-images"
+    ),
+    build_images: bool = typer.Option(
+        platform.system() == "Darwin",
+        help="Build Docker images locally (default: True on macOS)",
+    ),
 ) -> None:
     """Prepare all three condition instances and write to JSONL."""
     assert output is not None, "output path must not be None"
@@ -80,6 +91,49 @@ def prepare(
 
     write_instances(all_instances, output)
     console.print(f"[green]Wrote {len(all_instances)} instances -> {output}[/green]")
+
+    if build_images:
+        from ._images import build_images as _build_images
+
+        console.print("[bold]Building Docker images...[/bold]")
+        _build_images(
+            swe_bench_pro_dir,
+            output,
+            dockerhub_username=dockerhub_username,
+            limit=limit,
+        )
+
+
+@app.command()
+def build_images(
+    swe_bench_pro_dir: Path = typer.Option(
+        Path("SWE-bench_Pro-os"), help="Path to SWE-bench_Pro-os checkout"
+    ),
+    instances: Path = typer.Option(
+        DATA_DIR / "instances.jsonl", help="JSONL of instances"
+    ),
+    dockerhub_username: str = typer.Option(
+        "jefzda", help="Docker Hub username for image tags"
+    ),
+    instance_ids: list[str] = typer.Option([], help="Specific instance IDs to build"),
+    limit: int | None = typer.Option(None, help="Build only the first N instances"),
+    build_base: bool = typer.Option(
+        True, help="Build base image locally if pull fails"
+    ),
+) -> None:
+    """Build SWE-bench Pro Docker images locally."""
+    assert instances is not None, "instances path must not be None"
+    assert swe_bench_pro_dir is not None, "swe_bench_pro_dir must not be None"
+    from ._images import build_images as _build_images
+
+    _build_images(
+        swe_bench_pro_dir,
+        instances,
+        dockerhub_username=dockerhub_username,
+        instance_ids=instance_ids or None,
+        limit=limit,
+        build_base_if_pull_fails=build_base,
+    )
 
 
 @app.command()

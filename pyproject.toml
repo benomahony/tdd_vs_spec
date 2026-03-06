@@ -23,6 +23,7 @@ agent = ["mini-swe-agent"]
 [project.scripts]
 tdd-vs-spec = "tdd_vs_spec.cli:app"
 tdd_vs_spec = "tdd_vs_spec.cli:app"
+tvs = "tdd_vs_spec.cli:app"
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
