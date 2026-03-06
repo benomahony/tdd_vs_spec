@@ -23,6 +23,7 @@ from .eval_data import ensure_swe_bench_pro_raw_csv
 app = typer.Typer(
     help="Is the spec additive? TDD vs spec-driven for coding agents.",
     context_settings={"help_option_names": ["-h", "--help"]},
+    no_args_is_help=True,
 )
 
 DATA_DIR = Path("data")
@@ -202,7 +203,9 @@ def evaluate(
     assert swe_bench_pro_dir is not None, "swe_bench_pro_dir must not be None"
     dataset_csv = swe_bench_pro_dir / "swe_bench_pro_full.csv"
     if not dataset_csv.exists():
-        console.print(f"Creating [cyan]{dataset_csv}[/cyan] from Hugging Face dataset...")
+        console.print(
+            f"Creating [cyan]{dataset_csv}[/cyan] from Hugging Face dataset..."
+        )
         ensure_swe_bench_pro_raw_csv(dataset_csv)
         console.print(f"[green]Created[/green] {dataset_csv}")
     console.print(
