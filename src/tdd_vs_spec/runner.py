@@ -18,7 +18,7 @@ from .conditions import Condition, Instance, read_instances
 logger = logging.getLogger(__name__)
 
 
-def _write_instances_json(
+def write_instances_json(
     instances: list[Instance],
     path: Path,
     dockerhub_username: str = "jefzda",
@@ -98,6 +98,51 @@ def _merge_preds(preds_file: Path, existing_preds: dict[str, dict[str, str]]) ->
         logger.warning("Could not merge preds.json for %s", preds_file.parent)
 
 
+def _execute_batch(
+    condition: Condition,
+    pending: list[Instance],
+    pred_dir_abs: Path,
+    batch_instances_file: Path,
+    model: str,
+    max_workers: int,
+    mini_swe_agent_dir: Path,
+    timeout: int,
+) -> bool:
+    assert len(pending) > 0, "pending must not be empty"
+    assert pred_dir_abs.is_absolute(), "pred_dir_abs must be absolute"
+    with Progress(
+        SpinnerColumn(),
+        TextColumn("[progress.description]{task.description}"),
+        BarColumn(),
+        TaskProgressColumn(),
+        console=console,
+    ) as progress:
+        _ = progress.add_task(
+            f"Running {condition} ({len(pending)} instances)", total=None
+        )
+        try:
+            from ._minibatch import run_batch_in_process
+
+            run_batch_in_process(batch_instances_file, pred_dir_abs, model, max_workers)
+        except ImportError:
+            result = _invoke_mini_extra(
+                batch_instances_file,
+                pred_dir_abs,
+                model,
+                max_workers,
+                mini_swe_agent_dir,
+                timeout,
+            )
+            if result is None:
+                console.print(f"[yellow]Timeout for {condition}[/yellow]")
+                return False
+            if result.returncode != 0:
+                console.print(
+                    f"[red]run-batch failed for {condition}[/red]: {result.stderr[-500:]}"
+                )
+    return True
+
+
 def run_condition(
     instances_path: Path,
     output_dir: Path,
@@ -116,56 +161,28 @@ def run_condition(
     instances = instances[:limit]
     pred_dir = output_dir / condition
     pred_dir.mkdir(parents=True, exist_ok=True)
-
     preds_file = pred_dir / "preds.json"
     existing_preds = _load_preds(preds_file)
     pending = [i for i in instances if i.instance_id not in existing_preds]
     console.print(
         f"[bold]{condition}[/bold]: {len(pending)} pending / {len(instances)} total"
     )
-
     if not pending:
         return pred_dir
-
     batch_instances_file = (pred_dir / "batch_instances.json").resolve()
     pred_dir_abs = pred_dir.resolve()
-    _write_instances_json(pending, batch_instances_file, dockerhub_username)
-
-    with Progress(
-        SpinnerColumn(),
-        TextColumn("[progress.description]{task.description}"),
-        BarColumn(),
-        TaskProgressColumn(),
-        console=console,
-    ) as progress:
-        _ = progress.add_task(
-            f"Running {condition} ({len(pending)} instances)", total=None
-        )
-        try:
-            from ._minibatch import run_batch_in_process
-
-            run_batch_in_process(
-                batch_instances_file,
-                pred_dir_abs,
-                model,
-                max_workers,
-            )
-        except ImportError:
-            result = _invoke_mini_extra(
-                batch_instances_file,
-                pred_dir_abs,
-                model,
-                max_workers,
-                mini_swe_agent_dir,
-                timeout,
-            )
-            if result is None:
-                console.print(f"[yellow]Timeout for {condition}[/yellow]")
-                return pred_dir
-            if result.returncode != 0:
-                console.print(
-                    f"[red]run-batch failed for {condition}[/red]: {result.stderr[-500:]}"
-                )
+    write_instances_json(pending, batch_instances_file, dockerhub_username)
+    if not _execute_batch(
+        condition,
+        pending,
+        pred_dir_abs,
+        batch_instances_file,
+        model,
+        max_workers,
+        mini_swe_agent_dir,
+        timeout,
+    ):
+        return pred_dir
     _merge_preds(preds_file, existing_preds)
     return pred_dir
 
