@@ -32,7 +32,7 @@ def fake_instance(i: int = 0, condition: Condition = Condition.TESTS_ONLY) -> In
 @pytest.fixture
 def fake_db() -> duckdb.DuckDBPyConnection:
     db = duckdb.connect()
-    db.execute("""
+    _ = db.execute("""
         CREATE TABLE results (
             instance_id VARCHAR,
             prefix VARCHAR,
@@ -48,5 +48,5 @@ def fake_db() -> duckdb.DuckDBPyConnection:
         ("org__repo__3", "tests_plus_human_spec", True, 0.04, 3),
         ("org__repo__4", "tests_plus_llm_spec", False, 0.02, 1),
     ]
-    db.executemany("INSERT INTO results VALUES (?, ?, ?, ?, ?)", rows)
+    _ = db.executemany("INSERT INTO results VALUES (?, ?, ?, ?, ?)", rows)
     return db

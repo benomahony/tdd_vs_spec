@@ -5,7 +5,7 @@ from typing import NamedTuple, cast
 import duckdb
 from rich.table import Table
 
-from ._console import console
+from ._console import console as console
 from .conditions import Condition
 
 

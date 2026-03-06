@@ -12,7 +12,7 @@ from rich.progress import (
     TextColumn,
 )
 
-from ._console import console
+from ._console import console as console
 from .conditions import Condition, Instance, read_instances
 
 logger = logging.getLogger(__name__)

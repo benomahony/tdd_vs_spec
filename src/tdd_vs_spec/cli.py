@@ -3,7 +3,7 @@ from pathlib import Path
 
 import typer
 
-from ._console import console
+from ._console import console as console
 from .conditions import (
     Condition,
     Instance,
