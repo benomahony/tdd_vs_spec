@@ -40,6 +40,9 @@ reportUnknownVariableType = "none"
 reportAny = "none"
 reportUnknownArgumentType = "none"
 
+[tool.deptry]
+exclude = ["SWE-bench_Pro-os"]
+
 [tool.bandit]
 skips = ["B101"]
 
