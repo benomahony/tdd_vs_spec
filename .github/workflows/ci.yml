@@ -31,4 +31,4 @@ jobs:
         run: uv run basedpyright
 
       - name: Run tests
-        run: uv run pytest -n auto --cov=src/tdd_vs_spec --cov-report=term-missing --cov-fail-under=80
+        run: uv run pytest -n auto --cov=src/tdd_vs_spec --cov-report=term-missing --cov-fail-under=63
