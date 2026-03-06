@@ -18,6 +18,7 @@ from .runner import (
     write_patches_json,
 )
 from .analysis import cost_analysis, per_repo_breakdown, print_summary, load_results
+from .eval_data import ensure_swe_bench_pro_raw_csv
 
 app = typer.Typer(
     help="Is the spec additive? TDD vs spec-driven for coding agents.",
@@ -96,6 +97,10 @@ def run(
     ),
     max_workers: int = typer.Option(4, help="Parallel workers"),
     limit: int | None = typer.Option(None, help="Limit instances per condition"),
+    dockerhub_username: str = typer.Option(
+        "jefzda",
+        help="Docker Hub username for sweap-images (e.g. jefzda/sweap-images)",
+    ),
 ) -> None:
     """Run the agent on all instances for each condition."""
     assert max_workers > 0, "max_workers must be positive"
@@ -109,6 +114,7 @@ def run(
             model=model,
             max_workers=max_workers,
             limit=limit,
+            dockerhub_username=dockerhub_username,
         )
         patches = gather_patches(pred_dir, condition)
         patches_path = output_dir / f"{condition}_patches.json"
@@ -136,6 +142,10 @@ def pipeline(
     ),
     max_workers: int = typer.Option(4, help="Parallel workers"),
     limit: int | None = typer.Option(None, help="Limit instances per condition"),
+    dockerhub_username: str = typer.Option(
+        "jefzda",
+        help="Docker Hub username for sweap-images",
+    ),
 ) -> None:
     """Prepare instances then run the agent end-to-end."""
     assert max_workers > 0, "max_workers must be positive"
@@ -166,6 +176,7 @@ def pipeline(
             model=model,
             max_workers=max_workers,
             limit=limit,
+            dockerhub_username=dockerhub_username,
         )
         patches = gather_patches(pred_dir, condition)
         patches_path = output_dir / f"{condition}_patches.json"
@@ -189,10 +200,14 @@ def evaluate(
     """Print the swe_bench_pro_eval.py commands to run for each condition."""
     assert dockerhub_username is not None, "dockerhub_username must not be None"
     assert swe_bench_pro_dir is not None, "swe_bench_pro_dir must not be None"
+    dataset_csv = swe_bench_pro_dir / "swe_bench_pro_full.csv"
+    if not dataset_csv.exists():
+        console.print(f"Creating [cyan]{dataset_csv}[/cyan] from Hugging Face dataset...")
+        ensure_swe_bench_pro_raw_csv(dataset_csv)
+        console.print(f"[green]Created[/green] {dataset_csv}")
     console.print(
         "[bold]Run the following commands to evaluate each condition:[/bold]\n"
     )
-    dataset_csv = swe_bench_pro_dir / "swe_bench_pro_full.csv"
     eval_script = swe_bench_pro_dir / "swe_bench_pro_eval.py"
 
     for condition in conditions:

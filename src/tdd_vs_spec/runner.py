@@ -18,14 +18,19 @@ from .conditions import Condition, Instance, read_instances
 logger = logging.getLogger(__name__)
 
 
-def write_instances_json(instances: list[Instance], path: Path) -> None:
+def _write_instances_json(
+    instances: list[Instance],
+    path: Path,
+    dockerhub_username: str = "jefzda",
+) -> None:
+    """Write batch instances JSON. image_name is full Docker URI for SWE-bench Pro (registry/repo:tag)."""
     assert instances is not None, "instances must not be None"
     assert path is not None, "path must not be None"
     path.parent.mkdir(parents=True, exist_ok=True)
     data = [
         {
             "instance_id": i.instance_id,
-            "image_name": i.dockerhub_tag,
+            "image_name": f"{dockerhub_username}/sweap-images:{i.dockerhub_tag}",
             "problem_statement": i.problem_statement,
             "test_patch": i.test_patch,
         }
@@ -102,6 +107,7 @@ def run_condition(
     max_workers: int = 4,
     timeout: int = 3600,
     limit: int | None = None,
+    dockerhub_username: str = "jefzda",
 ) -> Path:
     assert max_workers > 0, "max_workers must be positive"
     assert instances_path.exists(), f"instances file not found: {instances_path}"
@@ -121,8 +127,9 @@ def run_condition(
     if not pending:
         return pred_dir
 
-    batch_instances_file = pred_dir / "batch_instances.json"
-    write_instances_json(pending, batch_instances_file)
+    batch_instances_file = (pred_dir / "batch_instances.json").resolve()
+    pred_dir_abs = pred_dir.resolve()
+    _write_instances_json(pending, batch_instances_file, dockerhub_username)
 
     with Progress(
         SpinnerColumn(),
@@ -134,22 +141,31 @@ def run_condition(
         _ = progress.add_task(
             f"Running {condition} ({len(pending)} instances)", total=None
         )
-        result = _invoke_mini_extra(
-            batch_instances_file,
-            pred_dir,
-            model,
-            max_workers,
-            mini_swe_agent_dir,
-            timeout,
-        )
-    if result is None:
-        console.print(f"[yellow]Timeout for {condition}[/yellow]")
-        return pred_dir
+        try:
+            from ._minibatch import run_batch_in_process
 
-    if result.returncode != 0:
-        console.print(
-            f"[red]run-batch failed for {condition}[/red]: {result.stderr[-500:]}"
-        )
+            run_batch_in_process(
+                batch_instances_file,
+                pred_dir_abs,
+                model,
+                max_workers,
+            )
+        except ImportError:
+            result = _invoke_mini_extra(
+                batch_instances_file,
+                pred_dir_abs,
+                model,
+                max_workers,
+                mini_swe_agent_dir,
+                timeout,
+            )
+            if result is None:
+                console.print(f"[yellow]Timeout for {condition}[/yellow]")
+                return pred_dir
+            if result.returncode != 0:
+                console.print(
+                    f"[red]run-batch failed for {condition}[/red]: {result.stderr[-500:]}"
+                )
     _merge_preds(preds_file, existing_preds)
     return pred_dir
 
