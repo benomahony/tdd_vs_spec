@@ -2,21 +2,27 @@
 
 import csv
 from pathlib import Path
+from typing import Any, cast
 
 
 def _serialize_cell(value: object) -> str:
     """Serialize a cell for CSV so eval() works for list columns (fail_to_pass, etc.)."""
+    assert not callable(value), (
+        f"callable values cannot be serialized to CSV: {type(value)}"
+    )
     if value is None:
         return ""
     if isinstance(value, str):
         return value
-    return repr(value)
+    result = repr(value)
+    assert isinstance(result, str), "repr must return a string"
+    return result
 
 
 def ensure_swe_bench_pro_raw_csv(
     path: Path,
     *,
-    _dataset=None,  # Optional for testing; when set, skip load_dataset
+    _dataset: Any = None,  # Optional for testing; when set, skip load_dataset
 ) -> None:
     """Create swe_bench_pro_full.csv from the Hugging Face dataset if it does not exist.
 
@@ -24,6 +30,8 @@ def ensure_swe_bench_pro_raw_csv(
     before_repo_set_cmd, selected_test_files_to_run) and list columns as strings
     that eval() can parse.
     """
+    assert path is not None, "path must not be None"
+    assert isinstance(path, Path), "path must be a Path object"
     if path.exists():
         return
     if _dataset is not None:
@@ -41,5 +49,8 @@ def ensure_swe_bench_pro_raw_csv(
         writer.writeheader()
         for row in ds:
             # Row keys match column_names; normalize to lowercase for writer
-            out = {k.lower(): _serialize_cell(v) for k, v in row.items()}
+            out = {
+                k.lower(): _serialize_cell(v)
+                for k, v in cast(dict[str, object], row).items()
+            }
             writer.writerow(out)
