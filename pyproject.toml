@@ -32,12 +32,6 @@ markers = [
 ]
 
 [tool.basedpyright]
-reportMissingTypeStubs = "none"
-reportCallInDefaultInitializer = "none"
-reportUnknownMemberType = "none"
-reportUnknownVariableType = "none"
-reportExplicitAny = "none"
-reportAny = "none"
 ignore = ["src/tdd_vs_spec/_minibatch.py"]
 
 [tool.bandit]
